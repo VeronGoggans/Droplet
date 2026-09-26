@@ -1,4 +1,5 @@
 import pytest
+import uuid
 
 from stormdb.serializer import serialize, deserialize
 
@@ -23,7 +24,9 @@ from stormdb.serializer import serialize, deserialize
         3.14,
         -3.14,
         True,
-        False
+        False,
+        None,
+        uuid.uuid4()
     ],
 )
 def test_serialize_deserialize(value):

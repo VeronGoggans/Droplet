@@ -1,4 +1,6 @@
 import struct
+import json
+from uuid import UUID
 
 from pathlib import Path
 from stormdb.types import StringOrPath, SupportedType
@@ -29,12 +31,12 @@ class StormDB:
         self.path: Path = self.__init_path(path)
         self.file = None
         self.data = {}
-        self.opened = False
+        self.is_open = False
 
 
 
     def open(self) -> None:
-        if self.opened:
+        if self.is_open:
             return
 
         self.data = {}
@@ -65,27 +67,27 @@ class StormDB:
         except FileNotFoundError:
             self.data = {}
         
-        self.opened = True
+        self.is_open = True
 
 
 
     def close(self) -> None:
-        if not self.opened:
+        if not self.is_open:
             return
 
         self.file.close()
-        self.opened = False
+        self.is_open = False
 
 
 
-    def add(self, key: str, value: SupportedType) -> SupportedType:
+    def set(self, key: str, value: SupportedType) -> SupportedType:
         stored_value = self.data.get(key, None)
         if stored_value:
             return stored_value
         
         type_id, value_bytes = serialize(value)
         key_bytes: bytes = key.encode('utf-8')
-        
+
         record = struct.pack(
             HEADER_FORMAT,
             ADD,
@@ -105,20 +107,48 @@ class StormDB:
 
 
 
+    def export_to_json(self, path: Path = Path.cwd()) -> None:
+        if not self.is_open:
+            raise ValueError(
+                'The database needs to be open before exporting to JSON'
+            )
+        
+        export_path = path / "database_export.json"
+        with open(export_path, 'w') as file:
+            json.dump(
+                self.data, 
+                file, 
+                indent=4,
+                default=lambda obj: str(obj) if isinstance(obj, UUID) else TypeError
+            )
+
+
+
     def get(self, key: str) -> str:
         return self.data.get(key)
 
 
 
-    def __init_path(self, path) -> Path:
+    def exists(self, key: str) -> bool:
+        return self.data.get(key) is not None
+
+
+
+    def __init_path(self, path: Path = None) -> Path:
+        filename = 'database.keys'
         if path is None:
-            return Path.cwd() / 'database.stormdb'
+            return Path.cwd() / filename
         
+        if '.' in str(path):
+            raise ValueError(
+                'The database path should point to a folder, not a file'
+            )
+    
         if isinstance(path, str):
-            return Path(path)
+            return Path(path) / filename
         
-        if isinstance(path, Path):
-            return path
+        if isinstance(path, Path): 
+            return path / filename
 
         raise ValueError(
             f'expected StringOrPath, not {type(path)}'
