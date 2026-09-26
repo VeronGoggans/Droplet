@@ -1,16 +1,22 @@
-import os
-import json
+import struct
 
 from pathlib import Path
 from stormdb.types import StringOrPath
 
 
+ADD = 1
+UPDATE = 2
+DELETE = 3
+HEADER_LENGTH = 9
+READ_BINARY = 'rb'
+APPEND_BINARY = 'a+b'
 
 
 class StormDB:
     
-    def __init__(self, path: StringOrPath) -> None:
+    def __init__(self, path: StringOrPath = None) -> None:
         self.path: Path = self.__init_path(path)
+        self.file = None
         self.data = {}
         self.opened = False
 
@@ -19,9 +25,29 @@ class StormDB:
         if self.opened:
             return
 
+        self.data = {}
+        self.file = open(self.path, APPEND_BINARY)
+        
         try:
-            with open(self.path, "r", encoding="utf-8") as file:
-                self.data = json.load(file)
+            with open(self.path, READ_BINARY) as file:
+
+                while True:
+                    header = file.read(HEADER_LENGTH)
+
+                    if not header:
+                        break
+
+                    operation, key_length, value_length = struct.unpack(
+                        ">BII",
+                        header
+                    )
+
+                    key = file.read(key_length).decode("utf-8")
+                    value = file.read(value_length).decode("utf-8")
+
+                    if operation == ADD:
+                        self.data[key] = value
+
         except FileNotFoundError:
             self.data = {}
         
@@ -32,14 +58,29 @@ class StormDB:
         if not self.opened:
             return
 
-        with open(self.path, "w", encoding="utf-8") as file:
-            json.dump(self.data, file, indent=4)
-
+        self.file.close()
         self.opened = False
 
 
     def add(self, key: str, value: str) -> None:
+        key_bytes: bytes = key.encode('utf-8')
+        value_bytes: bytes = value.encode('utf-8')
+
+        record = struct.pack(
+            ">BII",
+            ADD,
+            len(key_bytes),
+            len(value_bytes)
+        )
+
+        record += key_bytes
+        record += value_bytes
+
+        self.file.write(record)
+        self.file.flush()
+
         self.data[key] = value
+        
 
 
     def update(self, key: str, value: str) -> None:
@@ -62,14 +103,15 @@ class StormDB:
 
     def __init_path(self, path) -> Path:
         if path is None:
-            return Path(os.getcwd())
+            return Path.cwd() / 'stormdb.storm'
         
-        elif isinstance(path, str):
+        if isinstance(path, str):
             return Path(path)
         
-        elif isinstance(path, Path):
+        if isinstance(path, Path):
             return path
 
-        else:
-            raise ValueError(f'expected StringOrPath, not {type(path)}')
+        raise ValueError(
+            f'expected StringOrPath, not {type(path)}'
+        )
 
