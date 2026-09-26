@@ -1,15 +1,26 @@
 import struct
 
 from pathlib import Path
-from stormdb.types import StringOrPath
-
+from stormdb.types import StringOrPath, SupportedType
+from stormdb.serializer import serialize, deserialize
 
 ADD = 1
 UPDATE = 2
 DELETE = 3
-HEADER_LENGTH = 9
+
+HEADER_LENGTH = 1 + 1 + 4 + 4
+HEADER_FORMAT = '>BBII'
+
 READ_BINARY = 'rb'
 APPEND_BINARY = 'a+b'
+
+
+"""
+>: endian
+B: unsigned 1-byte integer
+I: unsigned 4-byte integer
+"""
+
 
 
 class StormDB:
@@ -19,6 +30,7 @@ class StormDB:
         self.file = None
         self.data = {}
         self.opened = False
+
 
 
     def open(self) -> None:
@@ -37,13 +49,15 @@ class StormDB:
                     if not header:
                         break
 
-                    operation, key_length, value_length = struct.unpack(
-                        ">BII",
+                    operation, type_id, key_length, value_length = struct.unpack(
+                        HEADER_FORMAT,
                         header
                     )
 
                     key = file.read(key_length).decode("utf-8")
-                    value = file.read(value_length).decode("utf-8")
+                    value_bytes = file.read(value_length)
+
+                    value = deserialize(type_id, value_bytes)
 
                     if operation == ADD:
                         self.data[key] = value
@@ -54,6 +68,7 @@ class StormDB:
         self.opened = True
 
 
+
     def close(self) -> None:
         if not self.opened:
             return
@@ -62,13 +77,19 @@ class StormDB:
         self.opened = False
 
 
-    def add(self, key: str, value: str) -> None:
-        key_bytes: bytes = key.encode('utf-8')
-        value_bytes: bytes = value.encode('utf-8')
 
+    def add(self, key: str, value: SupportedType) -> SupportedType:
+        stored_value = self.data.get(key, None)
+        if stored_value:
+            return stored_value
+        
+        type_id, value_bytes = serialize(value)
+        key_bytes: bytes = key.encode('utf-8')
+        
         record = struct.pack(
-            ">BII",
+            HEADER_FORMAT,
             ADD,
+            type_id,
             len(key_bytes),
             len(value_bytes)
         )
@@ -80,30 +101,18 @@ class StormDB:
         self.file.flush()
 
         self.data[key] = value
-        
+        return value
 
-
-    def update(self, key: str, value: str) -> None:
-        if key not in self.data:
-            raise KeyError(f"Key '{key}' does not exist")
-
-        self.data[key] = value
-
-
-    def delete(self, key: str) -> None:
-        if key not in self.data:
-            raise KeyError(f"Key '{key}' does not exist")
-
-        del self.data[key]
 
 
     def get(self, key: str) -> str:
         return self.data.get(key)
 
 
+
     def __init_path(self, path) -> Path:
         if path is None:
-            return Path.cwd() / 'stormdb.storm'
+            return Path.cwd() / 'database.stormdb'
         
         if isinstance(path, str):
             return Path(path)
