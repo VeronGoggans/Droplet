@@ -1,5 +1,4 @@
 import struct
-import base64
 from uuid import UUID
 from stormdb.types import (
     SupportedType,
@@ -48,6 +47,9 @@ def serialize(value: SupportedType) -> tuple[int, bytes]:
     
 
 def deserialize(type_id: int, value: bytes) -> SupportedType:
+    if value == b'':
+        return None
+    
     if type_id == STRING:
         return value.decode("utf-8")
 

@@ -1,6 +1,7 @@
 import struct
 
 from pathlib import Path
+
 from stormdb.types import StringOrPath, SupportedType
 from stormdb.serializer import serialize, deserialize
 from stormdb.exporter import export_to_json
@@ -17,22 +18,16 @@ READ_BINARY = 'rb'
 APPEND_BINARY = 'a+b'
 
 
-"""
->: endian
-B: unsigned 1-byte integer
-I: unsigned 4-byte integer
-"""
 
 
-
-class StormDB:
+class Database:
     
     def __init__(self, path: StringOrPath = None) -> None:
         self.path: Path = self.__init_path(path)
         self.file = None
         self.data = {}
         self.is_open = False
-
+        
 
 
     def open(self) -> None:
@@ -61,8 +56,11 @@ class StormDB:
 
                     value = deserialize(type_id, value_bytes)
 
-                    if operation == ADD:
+                    if operation == ADD or operation == UPDATE:
                         self.data[key] = value
+
+                    if operation == DELETE:
+                        del self.data[key]
 
         except FileNotFoundError:
             self.data = {}
@@ -81,16 +79,16 @@ class StormDB:
 
 
     def set(self, key: str, value: SupportedType) -> SupportedType:
-        stored_value = self.data.get(key, None)
-        if stored_value:
-            return stored_value
+        operation = ADD
+        if self.get(key) is not None:
+            operation = UPDATE
         
         type_id, value_bytes = serialize(value)
         key_bytes: bytes = key.encode('utf-8')
 
         record = struct.pack(
             HEADER_FORMAT,
-            ADD,
+            operation,
             type_id,
             len(key_bytes),
             len(value_bytes)
@@ -107,12 +105,33 @@ class StormDB:
 
 
 
-    def update(self, key: str, value: SupportedType) -> bool:
-        ...
-
-
-
     def delete(self, key: str) -> bool:
+        old_value = self.get(key) 
+        if old_value is None:
+            return False
+        
+        type_id, _ = serialize(old_value)
+        key_bytes: bytes = key.encode('utf-8')
+
+        record = struct.pack(
+            HEADER_FORMAT,
+            DELETE,
+            type_id,
+            len(key_bytes),
+            0
+        )
+
+        record += key_bytes
+
+        self.file.write(record)
+        self.file.flush()
+
+        del self.data[key]
+        return True
+
+
+
+    def find(self) -> list[dict]:
         ...
 
 
@@ -125,7 +144,7 @@ class StormDB:
 
 
 
-    def get(self, key: str) -> str:
+    def get(self, key: str) -> str | None:
         return self.data.get(key)
 
 
