@@ -1,9 +1,10 @@
 import struct
-import json
 
 from pathlib import Path
 from stormdb.types import StringOrPath, SupportedType
-from stormdb.serializer import serialize, deserialize, json_serializer
+from stormdb.serializer import serialize, deserialize
+from stormdb.exporter import export_to_json
+
 
 ADD = 1
 UPDATE = 2
@@ -106,23 +107,21 @@ class StormDB:
 
 
 
-    def export_to_json(self, path: Path = Path.cwd()) -> None:
-        if not self.is_open:
-            raise ValueError(
-                'The database needs to be open before exporting to JSON'
-            )
+    def update(self, key: str, value: SupportedType) -> bool:
+        ...
 
-        try:
-            export_path = path / "database_export.json"
-            with open(export_path, 'w') as file:
-                json.dump(
-                    self.data, 
-                    file, 
-                    indent=4,
-                    default=json_serializer
-                )
-        except TypeError as e:
-            print(f'An error occured while exporting: {str(e)}')
+
+
+    def delete(self, key: str) -> bool:
+        ...
+
+
+
+    def export(self, path: Path = Path.cwd()) -> None:
+        """Exports the database content to json"""
+        if not self.is_open:
+            raise ValueError('The database needs to be open before exporting to JSON')
+        export_to_json(path, self.data)
 
 
 

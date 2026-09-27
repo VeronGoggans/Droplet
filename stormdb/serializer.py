@@ -72,13 +72,3 @@ def deserialize(type_id: int, value: bytes) -> SupportedType:
     raise TypeError(
         f"Unknown type ID: {type_id}"
     )
-
-
-def json_serializer(obj):
-    if isinstance(obj, UUID):
-        return str(obj)
-
-    if isinstance(obj, bytes):
-        return base64.b64encode(obj).decode('ascii')
-
-    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")

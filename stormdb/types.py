@@ -1,10 +1,11 @@
 from pathlib import Path
 from typing import Union
+from uuid import UUID
 
 
 ####################### CUSTOM PARAM TYPES #######################
 StringOrPath = str | Path
-SupportedType = Union[str, int, float, bool]
+SupportedType = Union[str, int, float, bool, bytes, UUID]
 
 
 ####################### DATABASE SUPPORTED TYPES #######################
