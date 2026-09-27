@@ -26,7 +26,9 @@ from stormdb.serializer import serialize, deserialize
         True,
         False,
         None,
-        uuid.uuid4()
+        uuid.uuid4(),
+        uuid.uuid4().bytes,
+        'bytes string'.encode('utf-8')
     ],
 )
 def test_serialize_deserialize(value):

@@ -1,10 +1,9 @@
 import struct
 import json
-from uuid import UUID
 
 from pathlib import Path
 from stormdb.types import StringOrPath, SupportedType
-from stormdb.serializer import serialize, deserialize
+from stormdb.serializer import serialize, deserialize, json_serializer
 
 ADD = 1
 UPDATE = 2
@@ -112,15 +111,18 @@ class StormDB:
             raise ValueError(
                 'The database needs to be open before exporting to JSON'
             )
-        
-        export_path = path / "database_export.json"
-        with open(export_path, 'w') as file:
-            json.dump(
-                self.data, 
-                file, 
-                indent=4,
-                default=lambda obj: str(obj) if isinstance(obj, UUID) else TypeError
-            )
+
+        try:
+            export_path = path / "database_export.json"
+            with open(export_path, 'w') as file:
+                json.dump(
+                    self.data, 
+                    file, 
+                    indent=4,
+                    default=json_serializer
+                )
+        except TypeError as e:
+            print(f'An error occured while exporting: {str(e)}')
 
 
 
