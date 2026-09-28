@@ -19,6 +19,19 @@ UNSIGNED_CHAR = '>B'
 
 
 def serialize(value: SupportedType) -> tuple[int, bytes]:
+    """
+    Serialize a supported value into a type ID and binary representation.
+
+    Args:
+        value: Value to serialize. Supported values include strings,
+            booleans, UUIDs, None, bytes, integers, and floats.
+
+    Returns:
+        A tuple containing the type ID and the serialized binary value.
+
+    Raises:
+        ValueError: If the value's type is not supported.
+    """
     if isinstance(value, str):
         return STRING, value.encode("utf-8")
 
@@ -40,15 +53,25 @@ def serialize(value: SupportedType) -> tuple[int, bytes]:
     if isinstance(value, float):
         return FLOAT, struct.pack(SIGNED_64_BIT_FLOAT, value)
     
-    
     raise ValueError(
         f'Unsupported type: {type(value)}'
     )
     
 
 def deserialize(type_id: int, value: bytes) -> SupportedType:
-    if value == b'':
-        return None
+    """
+    Deserialize binary data into a supported Python value.
+
+    Args:
+        type_id: Identifier specifying the type of the serialized value.
+        value: Binary data to deserialize.
+
+    Returns:
+        The deserialized Python value.
+
+    Raises:
+        TypeError: If the type ID is unknown.
+    """
     
     if type_id == STRING:
         return value.decode("utf-8")
