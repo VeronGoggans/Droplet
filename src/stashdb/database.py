@@ -3,9 +3,9 @@ import struct
 from pathlib import Path
 from typing import Union
 
-from stormdb.types import SupportedType
-from stormdb.serializer import serialize, deserialize
-from stormdb.exporter import export_to_json
+from src.stashdb.types import SupportedType
+from src.stashdb.serializer import serialize, deserialize
+from src.stashdb.exporter import export_to_json
 
 
 ADD = 1
@@ -435,7 +435,7 @@ class Database:
             ValueError: If the provided path appears to point to a file
                 or is not a supported path type.
         """
-        filename = 'database.keys'
+        filename = 'database.sdb'
         if path is None:
             return Path.cwd() / filename
         

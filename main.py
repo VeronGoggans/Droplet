@@ -1,5 +1,5 @@
 import time
-from stormdb.stormdb import Database
+from src.stashdb.database import Database
 
 
 

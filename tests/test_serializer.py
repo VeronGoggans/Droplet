@@ -1,7 +1,7 @@
 import pytest
 import uuid
 
-from stormdb.serializer import serialize, deserialize
+from src.stashdb.serializer import serialize, deserialize
 
 
 @pytest.mark.parametrize(

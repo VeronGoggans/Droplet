@@ -1,6 +1,6 @@
 import struct
 from uuid import UUID
-from stormdb.types import (
+from src.stashdb.types import (
     SupportedType,
     STRING,
     INTEGER,

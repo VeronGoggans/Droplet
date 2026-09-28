@@ -10,7 +10,7 @@ def export_to_json(path: Path, data: dict) -> None:
     """
     Export database data to a JSON file.
 
-    The exported file is named ``database_export.json`` and is created
+    The exported file is named ``stashdb.json`` and is created
     inside the specified directory. UUID and bytes values are converted
     using ``json_serializer``.
 
@@ -21,7 +21,7 @@ def export_to_json(path: Path, data: dict) -> None:
     Raises:
         TypeError: If a value in the data cannot be serialized to JSON.
     """
-    export_path = path / "database_export.json"
+    export_path = path / "stashdb.json"
     with open(export_path, 'w') as file:
         json.dump(
             data, 
