@@ -316,6 +316,66 @@ class Database:
 
 
 
+    def greater_than(self, value: Union[int, float]) -> dict[str, SupportedType]:
+        self.__check_num_type(value)
+                
+        items: dict[str, SupportedType] = {}
+        for k, v in self.data.items():
+            if (isinstance(v, int) or isinstance(v, float)) and v > value:
+                items[k] = v
+
+        return items
+
+
+
+    def less_than(self, value: Union[int, float]) -> dict[str, SupportedType]:
+        self.__check_num_type(value)
+        
+        items: dict[str, SupportedType] = {}
+        for k, v in self.data.items():
+            if (isinstance(v, int) or isinstance(v, float)) and v < value:
+                items[k] = v
+
+        return items
+
+
+
+    def greater_than_or_equal(self, value: Union[int, float]) -> dict[str, SupportedType]:
+        self.__check_num_type(value)
+                
+        items: dict[str, SupportedType] = {}
+        for k, v in self.data.items():
+            if (isinstance(v, int) or isinstance(v, float)) and v >= value:
+                items[k] = v
+
+        return items
+    
+    
+    
+    def less_than_or_equal(self, value: Union[int, float]) -> dict[str, SupportedType]:
+        self.__check_num_type(value)
+        
+        items: dict[str, SupportedType] = {}
+        for k, v in self.data.items():
+            if (isinstance(v, int) or isinstance(v, float)) and v <= value:
+                items[k] = v
+
+        return items
+
+
+
+    def where(self, value: Union[str, int, float]) -> dict[str, SupportedType]:
+        if not isinstance(value, int) and not isinstance(value, float) and not isinstance(value, str):
+            raise ValueError(f'Unsupported type: {type(value)}')
+        
+        items: dict[str, SupportedType] = {}
+        for k, v in self.data.items():
+            if v == value:
+                items[k] = v
+        return items
+
+
+
     def export(self, path: Path = Path.cwd()) -> None:
         """
         Export the database contents to a JSON file.
@@ -400,6 +460,12 @@ class Database:
             record += value_bytes
 
         return record
+
+
+
+    def __check_num_type(self, value: Union[int, float]) -> None:
+        if not isinstance(value, int) and not isinstance(value, float):
+            raise ValueError(f'Unsupported type: {type(value)}')
 
 
 
