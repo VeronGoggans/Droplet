@@ -1,29 +1,52 @@
 import time
 
 from pathlib import Path
-from droplet import Database 
+
+from droplet import Database
 
 
+RUNS = 10
+ENTRIES = 1_000_000
 
 db_path = Path.cwd() / 'benchmarks'
 
-db = Database(path=db_path)
 entries = {
     f"key_{i}": i
-    for i in range(1000000)
+    for i in range(ENTRIES)
 }
 
+latencies = []
+db_size = None
 
-db.open()
-start = time.perf_counter()
+for _ in range(RUNS):
+    db = Database(path=db_path)
+    db.open()
 
-db.set_many(entries)
+    start = time.perf_counter()
+    db.set_many(entries)
+    end = time.perf_counter()
 
-end = time.perf_counter()
-db.close()
+    db.close()
+    latencies.append(end - start)
+    
+    if db_size is None:
+        db_size = db.path.stat().st_size
+    
+    db.path.unlink()
 
 
-print(f"Inserted {len(entries)} entries")
-print(f"Took {(end - start) * 1000:.3f} ms")
 
-db.path.unlink()
+print(f"Inserted {len(entries):,} entries")
+print(f"Runs: {RUNS}")
+print(f"Average latency: {(sum(latencies) / RUNS) * 1000:.3f} ms")
+print(f"Database size: {db_size / (1024 * 1024):.2f} MB")
+
+
+
+'''
+Benchmark Results
+
+Average latency: 553.394 ms
+Database size: 26.60 MB
+
+'''
