@@ -1,6 +1,6 @@
 import struct
 from uuid import UUID
-from src.stashdb.types import (
+from src.droplet.types import (
     SupportedType,
     STRING,
     INTEGER,

@@ -3,9 +3,9 @@ import struct
 from pathlib import Path
 from typing import Union
 
-from src.stashdb.types import SupportedType
-from src.stashdb.serializer import serialize, deserialize
-from src.stashdb.exporter import export_to_json
+from src.droplet.types import SupportedType
+from src.droplet.serializer import serialize, deserialize
+from src.droplet.exporter import export_to_json
 
 
 ADD = 1
@@ -501,7 +501,7 @@ class Database:
             ValueError: If the provided path appears to point to a file
                 or is not a supported path type.
         """
-        filename = 'database.sdb'
+        filename = 'database.droplet'
         if path is None:
             return Path.cwd() / filename
         

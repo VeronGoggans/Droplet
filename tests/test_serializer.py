@@ -1,7 +1,7 @@
 import pytest
 import uuid
 
-from src.stashdb.serializer import serialize, deserialize
+from src.droplet.serializer import serialize, deserialize
 
 
 @pytest.mark.parametrize(
