@@ -4,9 +4,9 @@
 
 **Small. Simple. Persistent.**
 
-Droplet is a lightweight, file-backed key-value database for Python.
+Droplet is a lightweight, file-backed key-value database for Python, designed to provide simple, persistent data storage without the complexity of a traditional database. 
 
-It is designed to provide simple, persistent data storage without the complexity of a traditional database. Droplet stores your data locally in a single file and provides a small, straightforward API.
+Droplet stores your data locally in a single file and provides a small, straightforward API.
 
 ## Features
 
