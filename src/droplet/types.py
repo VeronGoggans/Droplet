@@ -16,6 +16,7 @@ BYTES = 5
 LIST = 6
 DICT = 7
 UUID_TYPE = 8
+_MISSING = object()
 
 
 

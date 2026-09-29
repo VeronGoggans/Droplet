@@ -22,8 +22,9 @@ for _ in range(RUNS):
     db = Database(path=db_path)
     db.open()
 
-    start = time.perf_counter()
     db.set_many(entries)
+    start = time.perf_counter()
+    db.delete_all()
     end = time.perf_counter()
 
     db.close()
@@ -36,7 +37,7 @@ for _ in range(RUNS):
 
 
 
-print(f"Inserted {len(entries):,} entries")
+print(f"Deleted {len(entries):,} entries")
 print(f"Runs: {RUNS}")
 print(f"Average latency: {(sum(latencies) / RUNS) * 1000:.3f} ms")
 print(f"Database size: {db_size / (1024 * 1024):.2f} MB")
@@ -48,7 +49,7 @@ Benchmark Results
 
 Deleted 1,000,000 entries
 Runs: 10
-Average latency: 508.328 ms
-Database size: 26.60 MB
+Average latency: 574.135 ms
+Database size: 45.56 MB
 
 '''

@@ -3,7 +3,7 @@ import struct
 from pathlib import Path
 from typing import Union
 
-from droplet.types import SupportedType
+from droplet.types import SupportedType, _MISSING
 from droplet.serializer import serialize, deserialize
 from droplet.exporter import export_to_json
 
@@ -118,7 +118,7 @@ class Database:
         Returns:
             The value that was stored.
         """
-        operation = self.__get_set_operation(key)
+        operation = UPDATE if key in self.data else ADD
         
         record = self.__create_record(key, value, operation)
 
@@ -145,13 +145,13 @@ class Database:
         buffer = bytearray()
 
         for key, value in pairs.items():
-            operation = self.__get_set_operation(key)
+            operation = UPDATE if key in self.data else ADD
             buffer.extend(self.__create_record(key, value, operation))    
 
         self.file.write(buffer)
         self.file.flush()
 
-        self.data = self.data | pairs
+        self.data.update(pairs)
         return pairs
 
 
@@ -196,10 +196,11 @@ class Database:
         deleted_items = {}
         
         for key in keys:
-            if not self.exists(key):
+            value = self.data.pop(key, _MISSING)
+            if value is _MISSING:
                 continue
-
-            deleted_items[key] = self.data.pop(key, None)
+            
+            deleted_items[key] = value
             buffer.extend(self.__create_record(key, None, DELETE))
 
         self.file.write(buffer)
@@ -218,7 +219,17 @@ class Database:
             deletion.
         """
         return self.delete_many(list(self.data.keys()))
-        
+
+
+
+    def compact(self) -> None:
+        """
+        Compact the database by removing obsolete records from the log.
+
+        Only records required to reconstruct the current database state
+        are retained.
+        """
+        ...
 
 
     def keys(self) -> list[str]:
@@ -437,52 +448,28 @@ class Database:
         key_bytes: bytes = key.encode('utf-8')
 
         if operation == DELETE:    
-            record = struct.pack(
+            return struct.pack(
                 HEADER_FORMAT,
                 DELETE,
                 type_id,
                 len(key_bytes),
                 0
-            )
+            ) + key_bytes
     
-            record += key_bytes
-        
         if operation == ADD or operation == UPDATE:
-            record = struct.pack(
+            return struct.pack(
                 HEADER_FORMAT,
                 operation,
                 type_id,
                 len(key_bytes),
                 len(value_bytes)
-            )
-
-            record += key_bytes
-            record += value_bytes
-
-        return record
+            ) + key_bytes + value_bytes
 
 
 
     def __check_num_type(self, value: Union[int, float]) -> None:
         if not isinstance(value, int) and not isinstance(value, float):
             raise ValueError(f'Unsupported type: {type(value)}')
-
-
-
-    def __get_set_operation(self, key: str) -> int:
-        """
-        Determine whether setting a key requires an ADD or UPDATE operation.
-
-        Args:
-            key: Key whose existence should be checked.
-
-        Returns:
-            ADD if the key does not exist, otherwise UPDATE.
-        """
-        operation = ADD
-        if key in self.data:
-            operation = UPDATE
-        return operation
 
 
 
