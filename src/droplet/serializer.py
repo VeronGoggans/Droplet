@@ -1,6 +1,6 @@
 import struct
 from uuid import UUID
-from src.droplet.types import (
+from droplet.types import (
     SupportedType,
     STRING,
     INTEGER,

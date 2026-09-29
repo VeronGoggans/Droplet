@@ -3,9 +3,9 @@ import struct
 from pathlib import Path
 from typing import Union
 
-from src.droplet.types import SupportedType
-from src.droplet.serializer import serialize, deserialize
-from src.droplet.exporter import export_to_json
+from droplet.types import SupportedType
+from droplet.serializer import serialize, deserialize
+from droplet.exporter import export_to_json
 
 
 ADD = 1
@@ -509,14 +509,11 @@ class Database:
             raise ValueError(
                 'The database path should point to a folder, not a file'
             )
-    
-        if isinstance(path, str):
-            return Path(path) / filename
         
         if isinstance(path, Path): 
             return path / filename
 
         raise ValueError(
-            f'expected StringOrPath, not {type(path)}'
+            f'expected Path or None, not {type(path)}'
         )
 
