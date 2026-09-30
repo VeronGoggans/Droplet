@@ -1,10 +1,11 @@
-from src.droplet import Droplet
+from pathlib import Path
+from droplet import Droplet
 
-db = Droplet()
+db_path = Path('docs/database.dpt')
+db = Droplet(path=db_path)
+
 db.open()
-db.set('hello', 'world')
-key = db.get('hello')
+print(db.view())
 db.close()
 
-print(key)
 

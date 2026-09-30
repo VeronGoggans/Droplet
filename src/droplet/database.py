@@ -1,3 +1,4 @@
+import os
 import struct
 
 from pathlib import Path
@@ -17,7 +18,7 @@ HEADER_FORMAT = '>BBII'
 
 READ_BINARY = 'rb'
 APPEND_BINARY = 'a+b'
-
+WRITE_BINARY = 'w+b'
 
 
 
@@ -229,7 +230,28 @@ class Droplet:
         Only records required to reconstruct the current database state
         are retained.
         """
-        ...
+        if not self.is_open:
+            raise ValueError('The database needs to be open before compacting it')
+        
+        try:
+            temp_file_path = self.path.parent / 'database.droplet.tmp' 
+            
+            with open(temp_file_path, WRITE_BINARY) as file:
+                for key, value in self.data.items():
+                    record = self.__create_record(key, value, ADD)
+                    
+                    file.write(record)
+                    file.flush()
+
+            self.close()
+            os.replace(temp_file_path, self.path)
+
+            self.file = open(self.path, APPEND_BINARY)
+            self.is_open = True
+
+        except Exception as e:
+            raise e
+
 
 
     def keys(self) -> list[str]:
@@ -478,24 +500,31 @@ class Droplet:
         Create the database file path from a directory path.
 
         Args:
-            path: Directory where the database file should be stored.
+            path: Path to the database file or a directory where the database file should be stored.
                 Defaults to the current working directory.
 
         Returns:
             The complete path to the database file.
 
         Raises:
-            ValueError: If the provided path appears to point to a file
-                or is not a supported path type.
+            ValueError: If the provided path is not a supported path type.
         """
-        filename = 'database.droplet'
         if path is None:
-            return Path.cwd() / filename
+            return Path.cwd() / 'database.droplet'
         
-        if isinstance(path, Path): 
-            return path / filename
+        if isinstance(path, Path):
+            if path.is_dir():
+                return path / 'database.droplet'
+            if path.is_file() and path.suffix == '.droplet':
+                return path
+            else:
+                raise ValueError(
+                    f"Invalid path: {path}. "
+                    "The path must point to a directory or use the '.droplet' extension. "
+                    "Leave the path empty to use the current working directory."
+                )
 
         raise ValueError(
-            f'expected Path or None, not {type(path)}'
+            f'Expecting a Path or None, not {type(path)}.'
         )
 
