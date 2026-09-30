@@ -1,6 +1,6 @@
-from droplet import Database
+from src.droplet import Droplet
 
-db = Database()
+db = Droplet()
 db.open()
 db.set('hello', 'world')
 key = db.get('hello')

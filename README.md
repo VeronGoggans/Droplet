@@ -30,7 +30,7 @@ db.set("name", "Droplet")
 db.set("type", "key/value")
 
 print(db.get("name"))
-print(db.get("age"))
+print(db.get("type"))
 
 db.close()
 ```

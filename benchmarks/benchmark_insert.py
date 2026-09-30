@@ -2,7 +2,7 @@ import time
 
 from pathlib import Path
 
-from droplet import Database
+from droplet import Droplet
 
 
 RUNS = 10
@@ -19,7 +19,7 @@ latencies = []
 db_size = None
 
 for _ in range(RUNS):
-    db = Database(path=db_path)
+    db = Droplet(path=db_path)
     db.open()
 
     start = time.perf_counter()

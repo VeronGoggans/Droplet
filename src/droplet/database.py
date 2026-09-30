@@ -21,7 +21,7 @@ APPEND_BINARY = 'a+b'
 
 
 
-class Database:
+class Droplet:
     """
     A file-backed key-value database.
 
@@ -491,11 +491,6 @@ class Database:
         filename = 'database.droplet'
         if path is None:
             return Path.cwd() / filename
-        
-        if '.' in str(path):
-            raise ValueError(
-                'The database path should point to a folder, not a file'
-            )
         
         if isinstance(path, Path): 
             return path / filename
