@@ -17,6 +17,9 @@ LIST = 6
 TUPLE = 7
 DICT = 8
 UUID_TYPE = 9
+
+
+####################### SPECIAL TYPES #######################
 _MISSING = object()
 
 

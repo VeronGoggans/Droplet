@@ -8,7 +8,10 @@ from droplet.types import (
     BOOLEAN,
     NONE,
     UUID_TYPE,
-    BYTES
+    BYTES, 
+    TUPLE,
+    LIST,
+    DICT
 )
 
 
