@@ -44,7 +44,8 @@ Droplet aims to be a lightweight database for Python projects that need persiste
 **Planned features include:**
 
 * Lists and objects
-* Searching and querying
+* Transactions
+* Import from JSON support 
 * TTL / expiring values
 
 ## Status
