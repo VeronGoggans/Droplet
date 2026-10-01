@@ -338,15 +338,27 @@ class Droplet:
 
 
 
-    def find(self) -> list[dict]:
+    def compare_and_set(self, key: str, expected: SupportedType, new_value: SupportedType) -> SupportedType:
         """
-        Find key-value pairs matching the given criteria.
+        Set a value only if the current value matches the expected value.
+
+        If the key exists and its current value equals `expected`, it is
+        updated to `new_value`. Otherwise, the value is left unchanged.
+
+        Args:
+            key: The key to compare and potentially update.
+            expected: The value currently expected for the key.
+            new_value: The value to set if the comparison succeeds.
 
         Returns:
-            A list of matching key-value pairs.
+            The new value if the comparison succeeds, or False otherwise.
         """
-        ...
+        item = self.get(key, _MISSING)
 
+        if item != _MISSING and item == expected:
+            return self.set(key, new_value)
+
+        return False
 
 
     def greater_than(self, value: Union[int, float]) -> dict[str, SupportedType]:
@@ -425,18 +437,46 @@ class Droplet:
 
 
 
-    def get(self, key: str) -> SupportedType:
+    def get(self, key: str, default=None) -> SupportedType:
         """
         Get the value associated with a key.
 
         Args:
             key: Key whose value should be retrieved.
+            default: Value to return if the key does not exist.
 
         Returns:
-            The value associated with the key, or None if the key does not
+            The value associated with the key, or `default` if the key does not
             exist.
         """
-        return self.data.get(key)
+        return self.data.get(key, default)
+
+
+
+    def get_many(self, keys: list[str]) -> dict[str, SupportedType]:
+        """
+        Retrieve multiple values from the database by their keys.
+
+        Keys that do not exist in the database are omitted from the result.
+
+        Args:
+            keys: A list of keys to retrieve.
+
+        Returns:
+            A dictionary containing the requested keys and their values.
+            Missing keys are not included.
+        """
+        items: dict[str, SupportedType] = {}
+
+        for key in keys:
+            result = self.get(key, _MISSING)
+            
+            if result is _MISSING:
+                continue
+            
+            items[key] = result
+        
+        return items
 
 
 
@@ -515,8 +555,13 @@ class Droplet:
         if isinstance(path, Path):
             if path.is_dir():
                 return path / 'database.droplet'
+            
             if path.is_file() and path.suffix == '.droplet':
                 return path
+            
+            if not path.exists():
+                return path
+            
             else:
                 raise ValueError(
                     f"Invalid path: {path}. "

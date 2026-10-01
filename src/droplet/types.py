@@ -14,8 +14,9 @@ FLOAT = 3
 BOOLEAN = 4
 BYTES = 5
 LIST = 6
-DICT = 7
-UUID_TYPE = 8
+TUPLE = 7
+DICT = 8
+UUID_TYPE = 9
 _MISSING = object()
 
 
