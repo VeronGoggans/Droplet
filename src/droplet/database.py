@@ -4,7 +4,7 @@ import struct
 from pathlib import Path
 from typing import Union
 
-from droplet.types import SupportedType, _MISSING, T
+from droplet.types import SupportedType, _MISSING, T, UUID
 from droplet.serializer import serialize, deserialize
 from droplet.exporter import export_to_json
 
@@ -30,7 +30,7 @@ class Droplet:
     in-memory database state when opened.
     """
     
-    def __init__(self, path: Union[str, Path] = None) -> None:
+    def __init__(self, path: Union[str, Path] = None, max_size: int = None) -> None:
         """
         Initialize a database.
 
@@ -211,7 +211,7 @@ class Droplet:
 
 
 
-    def delete_all(self) -> dict[str, SupportedType]:
+    def clear(self) -> dict[str, SupportedType]:
         """
         Delete all key-value pairs from the database.
 
@@ -219,7 +219,18 @@ class Droplet:
             A dictionary containing all keys and their values after
             deletion.
         """
-        return self.delete_many(list(self.data.keys()))
+        try:
+            temp_file_path = self.path.parent / 'database.droplet.tmp' 
+            temp_file_path.write_bytes(b'')
+
+            self.close()
+            os.replace(temp_file_path, self.path)
+
+            self.file = open(self.path, APPEND_BINARY)
+            self.is_open = True
+
+        except Exception as e:
+            raise e
 
 
 
@@ -308,7 +319,6 @@ class Droplet:
 
         Returns:
             The new value after incrementing.
-
         """
         value = self.get(key)
 
@@ -338,7 +348,7 @@ class Droplet:
 
 
 
-    def compare_and_set(self, key: str, expected: SupportedType, new_value: SupportedType) -> SupportedType:
+    def compare_and_set(self, key: str, expected: SupportedType, new_value: SupportedType) -> bool:
         """
         Set a value only if the current value matches the expected value.
 
@@ -356,7 +366,8 @@ class Droplet:
         value = self.get(key)
 
         if value == expected:
-            return self.set(key, new_value)
+            self.set(key, new_value)
+            return True
 
         return False
 
@@ -364,10 +375,10 @@ class Droplet:
 
     def greater_than(self, value: Union[int, float]) -> dict[str, SupportedType]:
         self.__check_num_type(value)
-                
+
         items: dict[str, SupportedType] = {}
         for k, v in self.data.items():
-            if (isinstance(v, int) or isinstance(v, float)) and v > value:
+            if isinstance(v, (int, float)) and v > value:
                 items[k] = v
 
         return items
@@ -379,7 +390,7 @@ class Droplet:
         
         items: dict[str, SupportedType] = {}
         for k, v in self.data.items():
-            if (isinstance(v, int) or isinstance(v, float)) and v < value:
+            if isinstance(v, (int, float)) and v < value:
                 items[k] = v
 
         return items
@@ -391,7 +402,7 @@ class Droplet:
                 
         items: dict[str, SupportedType] = {}
         for k, v in self.data.items():
-            if (isinstance(v, int) or isinstance(v, float)) and v >= value:
+            if isinstance(v, (int, float)) and v >= value:
                 items[k] = v
 
         return items
@@ -403,26 +414,38 @@ class Droplet:
         
         items: dict[str, SupportedType] = {}
         for k, v in self.data.items():
-            if (isinstance(v, int) or isinstance(v, float)) and v <= value:
+            if isinstance(v, (int, float)) and v <= value:
                 items[k] = v
 
         return items
 
 
 
-    def where(self, value: Union[str, int, float]) -> dict[str, SupportedType]:
-        if not isinstance(value, int) and not isinstance(value, float) and not isinstance(value, str):
+    def equal_to(self, value: Union[str, int, float, bool, UUID, bytes]) -> dict[str, SupportedType]:
+        """
+        Returns all key-value pairs whose value is equal to the given value.
+
+        Args:
+            value: The value to compare against.
+
+        Returns:
+            A dictionary containing the key-value pairs with matching values.
+
+        Raises:
+            ValueError: If the given value is not a supported type.
+        """
+        if not isinstance(value, (str, int, float, bool, UUID, bytes)):
             raise ValueError(f'Unsupported type: {type(value)}')
-        
+
         items: dict[str, SupportedType] = {}
         for k, v in self.data.items():
-            if v == value:
+            if type(v) == type(v) and v == value:
                 items[k] = v
         return items
 
 
 
-    def export(self, path: Path = Path.cwd()) -> None:
+    def export_to_json(self, path: Path = Path.cwd()) -> None:
         """
         Export the database contents to a JSON file.
 
@@ -435,6 +458,32 @@ class Droplet:
         if not self.is_open:
             raise ValueError('The database needs to be open before exporting to JSON')
         export_to_json(path, self.data)
+
+
+
+    def import_from_json(self, data: dict) -> None:
+        """
+        Imports data from a JSON-compatible dictionary into the database.
+
+        The database must be open and empty before importing.
+
+        Args:
+            data: A dictionary containing the data to import.
+
+        Raises:
+            ValueError: If the database is not open, the data is not a dictionary,
+                or the database is not empty.
+        """
+        if not self.is_open:
+            raise ValueError('The database needs to be open before importing from JSON')
+
+        if not isinstance(data, dict):
+            raise ValueError('The JSON needs to be a valid dict')
+
+        if self.data:
+            raise ValueError('You can only import if the database is empty')
+
+        self.set_many(data)
 
 
 
@@ -458,10 +507,25 @@ class Droplet:
 
 
     def get_as(self, key: str, cls: type[T]) -> T:
-        try:
-            return cls(**self.get(key))
-        except (TypeError, KeyError) as e:
-            raise e
+        """
+        Retrieves a value by key and converts it into an instance of the given class.
+
+        The stored value must be a dictionary whose keys match the parameters
+        accepted by the class constructor.
+
+        Args:
+            key: The key of the value to retrieve.
+            cls: The class to instantiate using the stored dictionary.
+
+        Returns:
+            An instance of the given class populated with the stored value.
+
+        Raises:
+            KeyError: If the key does not exist in the database.
+            TypeError: If the stored value is not a dictionary or cannot be used
+                to construct the given class.
+        """
+        return cls(**self.get(key))
 
 
 
