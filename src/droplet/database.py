@@ -3,6 +3,7 @@ import struct
 
 from pathlib import Path
 from typing import Union
+from dataclasses import asdict
 
 from droplet.types import SupportedType, _MISSING, T, UUID
 from droplet.serializer import serialize, deserialize
@@ -30,19 +31,19 @@ class Droplet:
     in-memory database state when opened.
     """
     
-    def __init__(self, path: Union[str, Path] = None, max_size: int = None) -> None:
+    def __init__(self, path: Union[str, Path] = None) -> None:
         """
         Initialize a database.
 
         Args:
-            path: Directory where the database file should be stored.
+            path: Path to a directory or the database file.
                   Defaults to the current working directory.
         """
         self.path: Path = self.__init_path(path)
         self.file = None
         self.data = {}
         self.is_open = False
-        
+
 
 
     def open(self) -> None:
@@ -131,7 +132,55 @@ class Droplet:
 
 
 
-    def set_many(self, pairs: dict[str, SupportedType]) -> dict[str, SupportedType]:
+    def set_as(self, key: str, cls: type[T]) -> T:
+        """
+        Stores a dataclass instance as a dictionary under the given key.
+
+        Nested dataclasses are converted to nested dictionaries by ``asdict()``.
+
+        Args:
+            key: The key under which to store the dataclass.
+            cls: The dataclass instance to store.
+
+        Returns:
+            The value returned by ``set()`` after storing the dataclass.
+
+        Raises:
+            TypeError: If the provided value is not a dataclass instance or
+                contains unsupported nested dataclasses.
+        """
+        return self.set(key, asdict(cls))
+
+
+
+    def set_batch_as(self, pairs: dict[str, type[T]]) -> dict[str, T]:
+        """
+        Set multiple key-value pairs.
+
+        All records are written to the database in a single file write.
+
+        Args:
+            pairs: Dictionary containing the keys and values to store.
+
+        Returns:
+            The dictionary of key-value pairs that were stored.
+        """
+        buffer = bytearray()
+
+        for key, value in pairs.items():
+            operation = UPDATE if key in self.data else ADD
+            buffer.extend(self.__create_record(key, asdict(value), operation))    
+
+        self.file.write(buffer)
+        self.file.flush()
+
+        self.data.update(pairs)
+        return pairs
+
+
+
+
+    def set_batch(self, pairs: dict[str, SupportedType]) -> dict[str, SupportedType]:
         """
         Set multiple key-value pairs.
 
@@ -179,7 +228,7 @@ class Droplet:
 
 
 
-    def delete_many(self, keys: list[str]) -> dict[str, SupportedType]:
+    def delete_batch(self, keys: list[str]) -> dict[str, SupportedType]:
         """
         Delete multiple keys from the database.
 
@@ -306,6 +355,17 @@ class Droplet:
             The number of keys currently stored in the database.
         """
         return len(list(self.data.keys()))
+
+
+
+    def get_size(self) -> int:
+        """
+        Returns the current size of the database file in bytes.
+
+        Returns:
+            The size of the database file in bytes.
+        """
+        return self.path.stat().st_size
     
 
 
@@ -483,7 +543,7 @@ class Droplet:
         if self.data:
             raise ValueError('You can only import if the database is empty')
 
-        self.set_many(data)
+        self.set_batch(data)
 
 
 
@@ -529,7 +589,34 @@ class Droplet:
 
 
 
-    def get_many(self, keys: list[str]) -> dict[str, SupportedType]:
+    def get_batch_as(self, keys: list[str], cls: type[T]) -> dict[str, T]:
+        """
+        Retrieves multiple values by key and converts them into instances of
+        the given data class.
+
+        Each stored value must be a dictionary whose keys match the parameters
+        accepted by the class constructor.
+
+        Args:
+            keys: A list of keys to retrieve from the database.
+            cls: The data class to instantiate using each stored value.
+
+        Returns:
+            A dictionary mapping each key to an instance of the given data class.
+
+        Raises:
+            KeyError: If any of the given keys do not exist in the database.
+            TypeError: If a stored value cannot be used to construct the given class.
+        """
+        items: dict[str, T] = {}
+        for key in keys:
+            items[key] = cls(**self.get(key))
+
+        return items
+
+
+
+    def get_batch(self, keys: list[str]) -> dict[str, SupportedType]:
         """
         Retrieve multiple values from the database by their keys.
 
