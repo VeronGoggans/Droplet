@@ -18,6 +18,7 @@ from droplet.types import (
 SIGNED_64_BIT_INTEGER = '>q'
 SIGNED_64_BIT_FLOAT = '>d'
 UNSIGNED_CHAR = '>B'
+UNSIGNED_INT = '>I'
 
 
 
@@ -55,10 +56,55 @@ def serialize(value: SupportedType) -> tuple[int, bytes]:
 
     if isinstance(value, float):
         return FLOAT, struct.pack(SIGNED_64_BIT_FLOAT, value)
+
+    if isinstance(value, dict):
+        # Number of key/value pairs
+        dict_bytes = struct.pack(UNSIGNED_INT, len(value))
+
+        for key, item in value.items():
+            key_type_id, key_bytes = serialize(key)
+            value_type_id, value_bytes = serialize(item)
+
+            # The key type id
+            dict_bytes += struct.pack(UNSIGNED_CHAR, key_type_id)
+            
+            # The length of the key 
+            dict_bytes += struct.pack(UNSIGNED_INT, len(key_bytes))
+
+            # The key bytes
+            dict_bytes += key_bytes
+
+            # The value type id
+            dict_bytes += struct.pack(UNSIGNED_CHAR, value_type_id)
+
+            # The length of the value
+            dict_bytes += struct.pack(UNSIGNED_INT, len(value_bytes))
+
+            # The value bytes
+            dict_bytes += value_bytes
+
+        return DICT, dict_bytes
+
+    if isinstance(value, list) or isinstance(value, tuple):
+        # Number of items in the iterable
+        iterable_bytes = struct.pack(UNSIGNED_INT, len(value))
+
+        for v in value:
+            value_type_id, value_bytes = serialize(v)
+
+            # The value type id
+            iterable_bytes += struct.pack(UNSIGNED_CHAR, value_type_id)
+
+            # The value length
+            iterable_bytes += struct.pack(UNSIGNED_INT, len(value_bytes))
+
+            # The value bytes
+            iterable_bytes += value_bytes
+
+        data_type = LIST if isinstance(value, list) else TUPLE
+        return data_type, iterable_bytes
     
-    raise ValueError(
-        f'Unsupported type: {type(value)}'
-    )
+    raise ValueError(f'Unsupported type: {type(value)}')
     
 
 def deserialize(type_id: int, value: bytes) -> SupportedType:
@@ -97,6 +143,91 @@ def deserialize(type_id: int, value: bytes) -> SupportedType:
     if type_id == FLOAT:
         return struct.unpack(SIGNED_64_BIT_FLOAT, value)[0]
 
-    raise TypeError(
-        f"Unknown type ID: {type_id}"
-    )
+    if type_id == DICT:
+        offset = 0
+
+        # Number of key/value pairs in the dict
+        entry_count = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
+
+        # Move offset to the next piece of data
+        offset += struct.calcsize(UNSIGNED_INT)
+
+        result = {}
+
+        for _ in range(entry_count):
+
+            # Read the key type id 
+            key_type = struct.unpack_from(UNSIGNED_CHAR, value, offset)[0]
+
+            # Move the offset to the key length
+            offset += struct.calcsize(UNSIGNED_CHAR)
+
+            # Read the key length
+            key_length = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
+
+            # Move the offset to the actual key data
+            offset += struct.calcsize(UNSIGNED_INT)
+
+            # Read the key bytes
+            key_data = value[offset:offset + key_length]
+            
+            # Move the offset to the 
+            offset += key_length
+
+            item_type = struct.unpack_from(UNSIGNED_CHAR, value, offset)[0]
+
+            offset += struct.calcsize(UNSIGNED_CHAR)
+
+            item_length = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
+
+            offset += struct.calcsize(UNSIGNED_INT)
+
+            item_data = value[offset:offset + item_length]
+            offset += item_length
+
+            key = deserialize(key_type, key_data)
+            item = deserialize(item_type, item_data)
+
+            result[key] = item
+
+        return result
+
+    if type_id == LIST or type_id == TUPLE:
+        offset = 0
+
+        # Number of items in the iterable
+        entry_count = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
+
+        # Move offset to the next piece of data
+        offset += struct.calcsize(UNSIGNED_INT)
+
+        result = []
+
+        for _ in range(entry_count):
+            # Read the value type id 
+            value_type_id = struct.unpack_from(UNSIGNED_CHAR, value, offset)[0]
+
+            # Move the offset to the key length
+            offset += struct.calcsize(UNSIGNED_CHAR)
+
+            # Read the value length
+            value_length = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
+
+            # Move the offset to the actual value data
+            offset += struct.calcsize(UNSIGNED_INT)
+
+            value_data = value[offset:offset + value_length]
+            offset += value_length
+
+            d_value = deserialize(value_type_id, value_data)
+            result.append(d_value)
+
+
+        if type_id == TUPLE:
+            result = tuple(result)
+        
+        return result
+
+    raise TypeError(f"Unknown type ID: {type_id}")
+
+

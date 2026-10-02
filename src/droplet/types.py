@@ -1,9 +1,9 @@
-from typing import Union
+from typing import Union, TypeVar
 from uuid import UUID
 
 
 ####################### CUSTOM PARAM TYPES #######################
-SupportedType = Union[str, int, float, bool, bytes, UUID]
+SupportedType = Union[str, int, float, bool, bytes, UUID, dict, list, tuple]
 
 
 ####################### DATABASE SUPPORTED TYPES #######################
@@ -21,6 +21,7 @@ UUID_TYPE = 9
 
 ####################### SPECIAL TYPES #######################
 _MISSING = object()
+T = TypeVar('T')
 
 
 

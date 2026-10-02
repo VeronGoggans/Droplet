@@ -4,7 +4,7 @@ import struct
 from pathlib import Path
 from typing import Union
 
-from droplet.types import SupportedType, _MISSING
+from droplet.types import SupportedType, _MISSING, T
 from droplet.serializer import serialize, deserialize
 from droplet.exporter import export_to_json
 
@@ -353,12 +353,13 @@ class Droplet:
         Returns:
             The new value if the comparison succeeds, or False otherwise.
         """
-        item = self.get(key, _MISSING)
+        value = self.get(key)
 
-        if item != _MISSING and item == expected:
+        if value == expected:
             return self.set(key, new_value)
 
         return False
+
 
 
     def greater_than(self, value: Union[int, float]) -> dict[str, SupportedType]:
@@ -437,7 +438,7 @@ class Droplet:
 
 
 
-    def get(self, key: str, default=None) -> SupportedType:
+    def get(self, key: str) -> SupportedType:
         """
         Get the value associated with a key.
 
@@ -449,7 +450,18 @@ class Droplet:
             The value associated with the key, or `default` if the key does not
             exist.
         """
-        return self.data.get(key, default)
+        value = self.data.get(key, _MISSING)
+        if value == _MISSING:
+            raise KeyError(key)
+        return value
+
+
+
+    def get_as(self, key: str, cls: type[T]) -> T:
+        try:
+            return cls(**self.get(key))
+        except (TypeError, KeyError) as e:
+            raise e
 
 
 
@@ -467,17 +479,10 @@ class Droplet:
             Missing keys are not included.
         """
         items: dict[str, SupportedType] = {}
-
         for key in keys:
-            result = self.get(key, _MISSING)
-            
-            if result is _MISSING:
-                continue
-            
-            items[key] = result
+            items[key] = self.get(key)
         
         return items
-
 
 
     def exists(self, key: str) -> bool:
