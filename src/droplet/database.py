@@ -1,4 +1,5 @@
 import os
+import time
 import struct
 
 from pathlib import Path
@@ -14,8 +15,10 @@ ADD = 1
 UPDATE = 2
 DELETE = 3
 
-HEADER_LENGTH = 1 + 1 + 4 + 4
-HEADER_FORMAT = '>BBII'
+# 1-byte unsigned int | 1-byte unsigned int | 4-byte unsigned int | 4-byte unsigned int | 8-byte unsigned int
+#      operation      |       type_id       |      key_length     |     value_length    |      expiration
+HEADER_FORMAT = '>BBIIQ'
+HEADER_LENGTH = struct.calcsize(HEADER_FORMAT)
 
 READ_BINARY = 'rb'
 APPEND_BINARY = 'a+b'
@@ -39,10 +42,11 @@ class Droplet:
             path: Path to a directory or the database file.
                   Defaults to the current working directory.
         """
-        self.path: Path = self.__init_path(path)
         self.file = None
         self.data = {}
+        self.expirations = {}
         self.is_open = False
+        self.path: Path = self.__init_path(path)
 
 
 
@@ -69,7 +73,7 @@ class Droplet:
                     if not header:
                         break
 
-                    operation, type_id, key_length, value_length = struct.unpack(
+                    operation, type_id, key_length, value_length, expiration = struct.unpack(
                         HEADER_FORMAT,
                         header
                     )
@@ -80,10 +84,22 @@ class Droplet:
                     value = deserialize(type_id, value_bytes)
 
                     if operation == ADD or operation == UPDATE:
-                        self.data[key] = value
+                        # Expired
+                        if expiration and expiration <= time.time():
+                            self.data.pop(key, None)
+                            self.expirations.pop(key, None)
+                        # Valid
+                        else:
+                            self.data[key] = value
+
+                            if expiration:
+                                self.expirations[key] = expiration
+                            else:
+                                self.expirations.pop(key, None)
 
                     if operation == DELETE:
-                        del self.data[key]
+                        self.data.pop(key, None)
+                        self.expirations.pop(key, None)
 
         except FileNotFoundError:
             self.data = {}
@@ -101,12 +117,13 @@ class Droplet:
         if not self.is_open:
             return
 
+        
         self.file.close()
         self.is_open = False
 
 
 
-    def set(self, key: str, value: SupportedType) -> SupportedType:
+    def set(self, key: str, value: SupportedType, ttl: int = 0, namespace: str = '') -> SupportedType:
         """
         Set a key to a value.
 
@@ -120,19 +137,25 @@ class Droplet:
         Returns:
             The value that was stored.
         """
-        operation = UPDATE if key in self.data else ADD
+        self.validate_input(ttl, namespace)
+        key = self.__get_key(key, namespace)
         
-        record = self.__create_record(key, value, operation)
+        operation = UPDATE if key in self.data else ADD
+        record = self.__create_record(key, value, operation, ttl)
 
         self.file.write(record)
         self.file.flush()
 
         self.data[key] = value
+
+        if ttl > 0:
+            self.expirations[key] = time.time() + ttl
+
         return value
 
 
 
-    def set_as(self, key: str, cls: type[T]) -> T:
+    def set_as(self, key: str, cls: type[T], ttl: int = 0, namespace: str = '') -> T:
         """
         Stores a dataclass instance as a dictionary under the given key.
 
@@ -149,11 +172,11 @@ class Droplet:
             TypeError: If the provided value is not a dataclass instance or
                 contains unsupported nested dataclasses.
         """
-        return self.set(key, asdict(cls))
+        return self.set(key, asdict(cls), ttl, namespace)
 
 
 
-    def set_batch_as(self, pairs: dict[str, type[T]]) -> dict[str, T]:
+    def set_batch_as(self, pairs: dict[str, type[T]], ttl: int = 0, namespace: str = '') -> dict[str, T]:
         """
         Set multiple key-value pairs.
 
@@ -165,22 +188,29 @@ class Droplet:
         Returns:
             The dictionary of key-value pairs that were stored.
         """
+        self.validate_input(ttl, namespace)
         buffer = bytearray()
+        stored_items = {}
 
         for key, value in pairs.items():
+            key = self.__get_key(key, namespace)
             operation = UPDATE if key in self.data else ADD
-            buffer.extend(self.__create_record(key, asdict(value), operation))    
+            
+            stored_items[key] = value
+            buffer.extend(self.__create_record(key, asdict(value), operation, ttl))  
+            
+            if ttl > 0:
+                self.expirations[key] = time.time() + ttl  
 
         self.file.write(buffer)
         self.file.flush()
 
-        self.data.update(pairs)
-        return pairs
+        self.data.update(stored_items)        
+        return stored_items
 
 
 
-
-    def set_batch(self, pairs: dict[str, SupportedType]) -> dict[str, SupportedType]:
+    def set_batch(self, pairs: dict[str, SupportedType], ttl: int = 0, namespace: str = '') -> dict[str, SupportedType]:
         """
         Set multiple key-value pairs.
 
@@ -192,21 +222,29 @@ class Droplet:
         Returns:
             The dictionary of key-value pairs that were stored.
         """
+        self.validate_input(ttl, namespace)
         buffer = bytearray()
+        stored_items = {}
 
         for key, value in pairs.items():
+            key = self.__get_key(key, namespace)
             operation = UPDATE if key in self.data else ADD
-            buffer.extend(self.__create_record(key, value, operation))    
+
+            buffer.extend(self.__create_record(key, value, operation, ttl))
+            stored_items[key] = value
+            
+            if ttl > 0:
+                self.expirations[key] = time.time() + ttl
 
         self.file.write(buffer)
         self.file.flush()
 
-        self.data.update(pairs)
-        return pairs
+        self.data.update(stored_items)
+        return stored_items
 
 
 
-    def delete(self, key: str) -> SupportedType:
+    def delete(self, key: str, namespace: str = '') -> SupportedType:
         """
         Delete a key from the database.
 
@@ -216,6 +254,9 @@ class Droplet:
         Returns:
             The value that was deleted, or False if the key does not exist.
         """
+        self.validate_input(0, namespace)
+        key = self.__get_key(key, namespace)
+
         if not key in self.data:
             return False
         
@@ -224,11 +265,12 @@ class Droplet:
         self.file.write(record)
         self.file.flush()
 
+        self.expirations.pop(key, None)
         return self.data.pop(key, None)
 
 
 
-    def delete_batch(self, keys: list[str]) -> dict[str, SupportedType]:
+    def delete_batch(self, keys: list[str], namespace: str = '') -> dict[str, SupportedType]:
         """
         Delete multiple keys from the database.
 
@@ -242,11 +284,15 @@ class Droplet:
             A dictionary containing the requested keys and their previous
             values. Keys that did not exist, are not included.
         """
+        self.validate_input(0, namespace)
         buffer = bytearray()
         deleted_items = {}
         
         for key in keys:
+            key = self.__get_key(key, namespace)
             value = self.data.pop(key, _MISSING)
+            self.expirations.pop(key, None)
+            
             if value is _MISSING:
                 continue
             
@@ -267,7 +313,9 @@ class Droplet:
         Returns:
             A dictionary containing all keys and their values after
             deletion.
-        """
+        """        
+        self.data = {}
+        self.expirations = {}
         try:
             temp_file_path = self.path.parent / 'database.droplet.tmp' 
             temp_file_path.write_bytes(b'')
@@ -298,7 +346,8 @@ class Droplet:
             
             with open(temp_file_path, WRITE_BINARY) as file:
                 for key, value in self.data.items():
-                    record = self.__create_record(key, value, ADD)
+                    ttl = self.expirations.get(key, 0)
+                    record = self.__create_record(key, value, ADD, ttl)
                     
                     file.write(record)
                     file.flush()
@@ -369,7 +418,7 @@ class Droplet:
     
 
 
-    def increment(self, key: str, amount: int = 1) -> int:
+    def increment(self, key: str, amount: int = 1, namespace: str = '') -> int:
         """
         Increment an integer value by a given amount.
 
@@ -380,7 +429,8 @@ class Droplet:
         Returns:
             The new value after incrementing.
         """
-        value = self.get(key)
+        value = self.get(key, namespace)
+        key = self.__get_key(key, namespace)
 
         if isinstance(value, int):
             new_value = self.data[key] + amount
@@ -388,7 +438,7 @@ class Droplet:
 
 
 
-    def decrement(self, key: str, amount: int = 1) -> int:
+    def decrement(self, key: str, amount: int = 1, namespace: str = '') -> int:
         """
         Decrement an integer value by a given amount.
 
@@ -400,7 +450,8 @@ class Droplet:
             The new value after decrementing.
 
         """
-        value = self.get(key)
+        value = self.get(key, namespace)
+        key = self.__get_key(key, namespace)
 
         if isinstance(value, int):
             new_value = self.data[key] - amount
@@ -408,7 +459,31 @@ class Droplet:
 
 
 
-    def compare_and_set(self, key: str, expected: SupportedType, new_value: SupportedType) -> bool:
+    def ttl(self, key: str, namespace: str = '') -> int:
+        self.validate_input(0, namespace)
+        key = self.__get_key(key, namespace)
+        
+        expiration = self.expirations.get(key, 0)
+        if expiration == 0:
+            raise ValueError(f'{key} does not have an expiration.')
+
+        now = time.time()
+        if expiration < now:
+            self.delete(key)
+            raise KeyError(f'{key} has expired {now - expiration} seconds ago.')
+
+        return expiration - now
+
+
+
+    def compare_and_set(
+            self, 
+            key: str,
+            expected: SupportedType, 
+            new_value: SupportedType, 
+            ttl: int = 0,
+            namespace: str = ''
+        ) -> SupportedType:
         """
         Set a value only if the current value matches the expected value.
 
@@ -423,12 +498,10 @@ class Droplet:
         Returns:
             The new value if the comparison succeeds, or False otherwise.
         """
-        value = self.get(key)
+        value = self.get(key, namespace)
 
         if value == expected:
-            self.set(key, new_value)
-            return True
-
+            return self.set(key, new_value, ttl, namespace)
         return False
 
 
@@ -547,7 +620,7 @@ class Droplet:
 
 
 
-    def get(self, key: str) -> SupportedType:
+    def get(self, key: str, namespace: str = '') -> SupportedType:
         """
         Get the value associated with a key.
 
@@ -559,6 +632,13 @@ class Droplet:
             The value associated with the key, or `default` if the key does not
             exist.
         """
+        self.validate_input(0, namespace)
+        key = self.__get_key(key, namespace)
+
+        if self.__is_expired(key):
+            self.delete(key)
+            raise KeyError(key)
+
         value = self.data.get(key, _MISSING)
         if value == _MISSING:
             raise KeyError(key)
@@ -566,7 +646,7 @@ class Droplet:
 
 
 
-    def get_as(self, key: str, cls: type[T]) -> T:
+    def get_as(self, key: str, cls: type[T], namespace: str = '') -> T:
         """
         Retrieves a value by key and converts it into an instance of the given class.
 
@@ -585,11 +665,11 @@ class Droplet:
             TypeError: If the stored value is not a dictionary or cannot be used
                 to construct the given class.
         """
-        return cls(**self.get(key))
+        return cls(**self.get(key, namespace))
 
 
 
-    def get_batch_as(self, keys: list[str], cls: type[T]) -> dict[str, T]:
+    def get_batch_as(self, keys: list[str], cls: type[T], namespace: str = '') -> dict[str, T]:
         """
         Retrieves multiple values by key and converts them into instances of
         the given data class.
@@ -607,16 +687,16 @@ class Droplet:
         Raises:
             KeyError: If any of the given keys do not exist in the database.
             TypeError: If a stored value cannot be used to construct the given class.
-        """
+        """        
         items: dict[str, T] = {}
         for key in keys:
-            items[key] = cls(**self.get(key))
+            items[key] = cls(**self.get(key, namespace))
 
         return items
 
 
 
-    def get_batch(self, keys: list[str]) -> dict[str, SupportedType]:
+    def get_batch(self, keys: list[str], namespace: str = '') -> dict[str, SupportedType]:
         """
         Retrieve multiple values from the database by their keys.
 
@@ -631,12 +711,13 @@ class Droplet:
         """
         items: dict[str, SupportedType] = {}
         for key in keys:
+            key = self.__get_key(key, namespace)
             items[key] = self.get(key)
         
         return items
 
 
-    def exists(self, key: str) -> bool:
+    def exists(self, key: str, namespace: str = '') -> bool:
         """
         Check whether a key exists in the database.
 
@@ -646,11 +727,26 @@ class Droplet:
         Returns:
             True if the key exists, otherwise False.
         """
+        self.validate_input(0, namespace)
+        key = self.__get_key(key, namespace)
+
+        if self.__is_expired(key):
+            self.delete(key)
+            return False
+        
         return key in self.data
 
 
 
-    def __create_record(self, key: str, value: SupportedType, operation: int) -> bytes:
+    def __is_expired(self, key: str) -> bool:
+        expiration = self.expirations.get(key, None)
+        now = time.time()
+        
+        return False if expiration is None else expiration < now
+
+
+
+    def __create_record(self, key: str, value: SupportedType, operation: int, ttl = 0) -> bytes:
         """
         Create a binary database record.
 
@@ -664,6 +760,7 @@ class Droplet:
         """
         type_id, value_bytes = serialize(value)
         key_bytes: bytes = key.encode('utf-8')
+        expiration = time.time() + ttl if ttl > 0 else 0
 
         if operation == DELETE:    
             return struct.pack(
@@ -671,6 +768,7 @@ class Droplet:
                 DELETE,
                 type_id,
                 len(key_bytes),
+                0,
                 0
             ) + key_bytes
     
@@ -680,7 +778,8 @@ class Droplet:
                 operation,
                 type_id,
                 len(key_bytes),
-                len(value_bytes)
+                len(value_bytes),
+                int(expiration)
             ) + key_bytes + value_bytes
 
 
@@ -688,6 +787,22 @@ class Droplet:
     def __check_num_type(self, value: Union[int, float]) -> None:
         if not isinstance(value, int) and not isinstance(value, float):
             raise ValueError(f'Unsupported type: {type(value)}')
+
+
+
+    def validate_input(self, ttl: int, namespace: str) -> None:
+        if not isinstance(ttl, int):
+            raise ValueError('ttl must be an int')
+
+        if not isinstance(namespace, str):
+            raise ValueError('namespace must be a str')
+
+
+
+    def __get_key(self, key: str, namespace: str) -> str:
+        if not namespace:
+            return key
+        return f'{namespace}:{key}'
 
 
 
