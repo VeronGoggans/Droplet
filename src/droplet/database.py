@@ -646,6 +646,18 @@ class Droplet:
 
 
 
+    def get_namespace(self, namespace: str) -> dict[str, SupportedType]:
+        self.validate_input(0, namespace)
+        items = {}
+
+        for key, value in self.data.items():
+            if ':' in key and key.split(':')[0] == namespace:
+                items[key] = value
+
+        return items
+
+
+
     def get_as(self, key: str, cls: type[T], namespace: str = '') -> T:
         """
         Retrieves a value by key and converts it into an instance of the given class.
