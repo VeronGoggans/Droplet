@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Union
 from dataclasses import asdict
 
-from droplet.types import SupportedType, _MISSING, T, UUID
+from droplet.types import SupportedType, _MISSING, T, UUID, StorageMode
 from droplet.serializer import serialize, deserialize
 from droplet.exporter import export_to_json
 
@@ -34,7 +34,7 @@ class Droplet:
     in-memory database state when opened.
     """
     
-    def __init__(self, path: Union[str, Path] = None) -> None:
+    def __init__(self, path: Union[str, Path] = None, mode: StorageMode = 'persistent') -> None:
         """
         Initialize a database.
 
@@ -48,6 +48,14 @@ class Droplet:
         self.is_open = False
         self.path: Path = self.__init_path(path)
 
+        if mode not in ('persistent', 'memory'):
+            raise ValueError(f'Invalid mode: {mode}')
+
+        self.mode: StorageMode = mode
+
+        if mode == 'memory':
+            self.is_open = True
+
 
 
     def open(self) -> None:
@@ -56,8 +64,10 @@ class Droplet:
 
         Replays all stored records from the database file to reconstruct
         the current key-value state. Does nothing if the database is
-        already open.
+        already open or mode: `memory`.
         """
+        if self.mode == 'memory':
+            return
         if self.is_open:
             return
 
@@ -112,11 +122,12 @@ class Droplet:
         """
         Close the database file.
 
-        Does nothing if the database is already closed.
+        Does nothing if the database is already closed or if mode: `memory`.
         """
+        if self.mode == 'memory':
+            return
         if not self.is_open:
             return
-
         
         self.file.close()
         self.is_open = False
@@ -140,12 +151,7 @@ class Droplet:
         self.__validate_input(ttl, namespace)
         key = self.__get_key(key, namespace)
         
-        operation = UPDATE if key in self.data else ADD
-        record = self.__create_record(key, value, operation, ttl)
-
-        self.file.write(record)
-        self.file.flush()
-
+        self.__serialize_and_write(key, value, ttl)
         self.data[key] = value
 
         if ttl > 0:
@@ -194,17 +200,17 @@ class Droplet:
 
         for key, value in pairs.items():
             key = self.__get_key(key, namespace)
-            operation = UPDATE if key in self.data else ADD
-            
             stored_items[key] = asdict(value)
-            buffer.extend(self.__create_record(key, asdict(value), operation, ttl))  
+
+            if self.mode == 'persistent':
+                operation = UPDATE if key in self.data else ADD
+                buffer.extend(self.__create_record(key, asdict(value), operation, ttl))  
             
             if ttl > 0:
                 self.expirations[key] = time.time() + ttl  
 
-        self.file.write(buffer)
-        self.file.flush()
 
+        self.__write(buffer)
         self.data.update(stored_items)        
         return stored_items
 
@@ -228,17 +234,17 @@ class Droplet:
 
         for key, value in pairs.items():
             key = self.__get_key(key, namespace)
-            operation = UPDATE if key in self.data else ADD
-
-            buffer.extend(self.__create_record(key, value, operation, ttl))
             stored_items[key] = value
+
+            if self.mode == 'persistent':
+                operation = UPDATE if key in self.data else ADD
+                buffer.extend(self.__create_record(key, value, operation, ttl))
             
             if ttl > 0:
                 self.expirations[key] = time.time() + ttl
 
-        self.file.write(buffer)
-        self.file.flush()
 
+        self.__write(buffer)
         self.data.update(stored_items)
         return stored_items
 
@@ -261,9 +267,7 @@ class Droplet:
             return False
         
         record = self.__create_record(key, None, DELETE)
-
-        self.file.write(record)
-        self.file.flush()
+        self.__write(record)
 
         self.expirations.pop(key, None)
         return self.data.pop(key, None)
@@ -297,11 +301,12 @@ class Droplet:
                 continue
             
             deleted_items[key] = value
-            buffer.extend(self.__create_record(key, None, DELETE))
+            
+            if self.mode == 'persistent':
+                buffer.extend(self.__create_record(key, None, DELETE))
 
-        self.file.write(buffer)
-        self.file.flush()            
 
+        self.__write(buffer) 
         return deleted_items
 
 
@@ -316,6 +321,10 @@ class Droplet:
         """        
         self.data = {}
         self.expirations = {}
+
+        if self.mode == 'memory':
+            return
+
         try:
             temp_file_path = self.path.parent / 'database.droplet.tmp' 
             temp_file_path.write_bytes(b'')
@@ -338,6 +347,8 @@ class Droplet:
         Only records required to reconstruct the current database state
         are retained.
         """
+        if self.mode == 'memory':
+            return
         if not self.is_open:
             raise ValueError('The database needs to be open before compacting it')
         
@@ -793,6 +804,33 @@ class Droplet:
                 len(value_bytes),
                 int(expiration)
             ) + key_bytes + value_bytes
+
+
+
+    def __write(self, record: bytes | bytearray) -> None:
+        if self.mode == 'memory': 
+            return
+
+        if not self.is_open:
+            raise RuntimeError("Database is not open. Call open() first.")
+
+        self.file.write(record)
+        self.file.flush()
+        
+
+
+    def __serialize_and_write(self, key: str, value: SupportedType, ttl: int) -> None:
+        if self.mode == 'memory': 
+            return
+
+        if not self._is_open:
+            raise RuntimeError("Database is not open. Call open() first.")
+
+        operation = UPDATE if key in self.data else ADD
+        record = self.__create_record(key, value, operation, ttl)
+        
+        self.file.write(record)
+        self.file.flush()
 
 
 
