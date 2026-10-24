@@ -305,14 +305,14 @@ def test_decrement_boolean(db):
 # -------------------------
 
 def test_increment_persistence(tmp_path):
-    db = Droplet(tmp_path)
+    db = Droplet(tmp_path, mode='persistent')
     db.open()
 
     db.set("counter", 10)
     db.increment("counter", 5)
     db.close()
 
-    reopened = Droplet(tmp_path)
+    reopened = Droplet(tmp_path, mode='persistent')
     reopened.open()
 
     try:
@@ -322,14 +322,14 @@ def test_increment_persistence(tmp_path):
 
 
 def test_decrement_persistence(tmp_path):
-    db = Droplet(tmp_path)
+    db = Droplet(tmp_path, mode='persistent')
     db.open()
 
     db.set("counter", 10)
     db.decrement("counter", 3)
     db.close()
 
-    reopened = Droplet(tmp_path)
+    reopened = Droplet(tmp_path, mode='persistent')
     reopened.open()
 
     try:

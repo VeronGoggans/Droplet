@@ -6,7 +6,7 @@ from src.droplet.database import Droplet
 
 
 def test_init_with_none():
-    db = Droplet()
+    db = Droplet(mode='persistent')
 
     assert db.path == Path.cwd() / 'database.droplet'
     assert db.data == {}

@@ -249,7 +249,7 @@ def test_delete_batch_invalid_namespace(db):
 # -------------------------
 
 def test_delete_persistence(tmp_path):
-    db = Droplet(tmp_path)
+    db = Droplet(tmp_path, mode='persistent')
     db.open()
 
     db.set("name", "Alice")
@@ -258,7 +258,7 @@ def test_delete_persistence(tmp_path):
 
     db.close()
 
-    reopened = Droplet(tmp_path)
+    reopened = Droplet(tmp_path, mode='persistent')
     reopened.open()
 
     try:
@@ -271,7 +271,7 @@ def test_delete_persistence(tmp_path):
 
 
 def test_delete_batch_persistence(tmp_path):
-    db = Droplet(tmp_path)
+    db = Droplet(tmp_path, mode='persistent')
     db.open()
 
     db.set_batch({
@@ -283,7 +283,7 @@ def test_delete_batch_persistence(tmp_path):
     db.delete_batch(["name", "age"])
     db.close()
 
-    reopened = Droplet(tmp_path)
+    reopened = Droplet(tmp_path, mode='persistent')
     reopened.open()
 
     try:
@@ -299,7 +299,7 @@ def test_delete_batch_persistence(tmp_path):
 
 
 def test_delete_then_reinsert_persistence(tmp_path):
-    db = Droplet(tmp_path)
+    db = Droplet(tmp_path, mode='persistent')
     db.open()
 
     db.set("name", "Alice")
@@ -308,7 +308,7 @@ def test_delete_then_reinsert_persistence(tmp_path):
 
     db.close()
 
-    reopened = Droplet(tmp_path)
+    reopened = Droplet(tmp_path, mode='persistent')
     reopened.open()
 
     try:
@@ -318,7 +318,7 @@ def test_delete_then_reinsert_persistence(tmp_path):
 
 
 def test_delete_batch_then_reinsert_persistence(tmp_path):
-    db = Droplet(tmp_path)
+    db = Droplet(tmp_path, mode='persistent')
     db.open()
 
     db.set_batch({
@@ -335,7 +335,7 @@ def test_delete_batch_then_reinsert_persistence(tmp_path):
 
     db.close()
 
-    reopened = Droplet(tmp_path)
+    reopened = Droplet(tmp_path, mode='persistent')
     reopened.open()
 
     try:

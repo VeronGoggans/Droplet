@@ -1,9 +1,19 @@
-from typing import Union, TypeVar, Literal, TypeAlias
+from typing import TypeVar, Literal, TypeAlias
 from uuid import UUID
 
 
-####################### CUSTOM PARAM TYPES #######################
-SupportedType: TypeAlias = Union[str, int, float, bool, bytes, UUID, dict, list, tuple]
+####################### CUSTOM TYPES #######################
+SupportedType: TypeAlias = (
+    str 
+    | int 
+    | float  
+    | bool 
+    | bytes 
+    | UUID 
+    | dict[str, "SupportedType"] 
+    | list["SupportedType"]
+    | tuple["SupportedType", ...]
+)
 StorageMode: TypeAlias = Literal['persistent', 'memory']
 
 

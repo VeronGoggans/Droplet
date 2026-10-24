@@ -359,12 +359,12 @@ def test_set_batch_as_overwrite(db):
 # -------------------------
 
 def test_set_persistence(tmp_path):
-    db = Droplet(tmp_path)
+    db = Droplet(tmp_path, mode='persistent')
     db.open()
     db.set("name", "Alice")
     db.close()
 
-    reopened = Droplet(tmp_path)
+    reopened = Droplet(tmp_path, mode='persistent')
     reopened.open()
 
     try:
@@ -374,7 +374,7 @@ def test_set_persistence(tmp_path):
 
 
 def test_set_batch_persistence(tmp_path):
-    db = Droplet(tmp_path)
+    db = Droplet(tmp_path, mode='persistent')
     db.open()
 
     db.set_batch({
@@ -385,7 +385,7 @@ def test_set_batch_persistence(tmp_path):
 
     db.close()
 
-    reopened = Droplet(tmp_path)
+    reopened = Droplet(tmp_path, mode='persistent')
     reopened.open()
 
     try:
@@ -397,12 +397,12 @@ def test_set_batch_persistence(tmp_path):
 
 
 def test_set_as_persistence(tmp_path):
-    db = Droplet(tmp_path)
+    db = Droplet(tmp_path, mode='persistent')
     db.open()
     db.set_as("1", User("Alice", 30), namespace="user")
     db.close()
 
-    reopened = Droplet(tmp_path)
+    reopened = Droplet(tmp_path, mode='persistent')
     reopened.open()
 
     try:
@@ -412,7 +412,7 @@ def test_set_as_persistence(tmp_path):
 
 
 def test_set_batch_as_persistence(tmp_path):
-    db = Droplet(tmp_path)
+    db = Droplet(tmp_path, mode='persistent')
     db.open()
 
     db.set_batch_as({
@@ -422,7 +422,7 @@ def test_set_batch_as_persistence(tmp_path):
 
     db.close()
 
-    reopened = Droplet(tmp_path)
+    reopened = Droplet(tmp_path, mode='persistent')
     reopened.open()
 
     try:

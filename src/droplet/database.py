@@ -34,13 +34,15 @@ class Droplet:
     in-memory database state when opened.
     """
     
-    def __init__(self, path: Union[str, Path] = None, mode: StorageMode = 'persistent') -> None:
+    def __init__(self, path: Union[str, Path] = None, mode: StorageMode = 'memory') -> None:
         """
         Initialize a database.
 
         Args:
             path: Path to a directory or the database file.
                   Defaults to the current working directory.
+            mode: Storage mode "memory" | "persistent".
+                  Defaults to in-memory
         """
         self.file = None
         self.data = {}
@@ -823,7 +825,7 @@ class Droplet:
         if self.mode == 'memory': 
             return
 
-        if not self._is_open:
+        if not self.is_open:
             raise RuntimeError("Database is not open. Call open() first.")
 
         operation = UPDATE if key in self.data else ADD
