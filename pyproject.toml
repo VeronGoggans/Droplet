@@ -2,9 +2,32 @@
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
-[project]
-name = "droplet"
-version = "0.1.0"
-
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[project]
+name = "droplet-db"
+version = "0.1.0"
+description = "A lightweight, file-backed key-value database for Python"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Veron Goggans" }
+]
+keywords = [
+    "database",
+    "key-value",
+    "embedded",
+    "storage",
+    "binary"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Database"
+]
+
+[project.urls]
+Repository = "https://github.com/VeronGoggans/Droplet"
+Issues = "https://github.com/VeronGoggans/Droplet/issues"
