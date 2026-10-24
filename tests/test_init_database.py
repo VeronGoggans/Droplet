@@ -4,34 +4,66 @@ from pathlib import Path
 from src.droplet.database import Droplet
 
 
+
 def test_init_with_none():
-    """Test that passing None defaults to the current working directory."""
     db = Droplet()
+
     assert db.path == Path.cwd() / 'database.droplet'
     assert db.data == {}
     assert db.is_open is False
 
 
-def test_init_with_path_object():
-    """Test initializing with a pathlib Path object."""
-    custom_path = Path("/tmp/storage")
-    db = Droplet(custom_path)
-    assert db.path == custom_path / 'database.droplet'
-    assert db.data == {}
-    assert db.is_open is False
+def test_init_with_existing_directory(tmp_path):
+    db = Droplet(tmp_path)
+
+    assert db.path == tmp_path / 'database.droplet'
+
+
+def test_init_with_nonexistent_directory(tmp_path):
+    path = tmp_path / 'storage'
+    db = Droplet(path)
+
+    assert db.path == path / 'database.droplet'
+
+
+def test_init_with_existing_database_file(tmp_path):
+    path = tmp_path / 'custom.droplet'
+    path.touch()
+
+    db = Droplet(path)
+
+    assert db.path == path
+
+
+def test_init_with_nonexistent_database_file(tmp_path):
+    path = tmp_path / 'custom.droplet'
+    db = Droplet(path)
+
+    assert db.path == path
+
+
+def test_init_with_string_directory(tmp_path):
+    db = Droplet(str(tmp_path))
+
+    assert db.path == tmp_path / 'database.droplet'
 
 
 def test_init_with_invalid_type():
-    """Test that passing an unsupported type (like an int) raises ValueError."""
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ValueError, match="Expected str, Path or None"):
         Droplet(123)
-    
-    assert "expected StringOrPath" in str(exc_info.value)
 
 
-def test_init_with_invalid_path():
-    """Test that passing an unsupported path (with file as destination) raises ValueError."""
-    with pytest.raises(ValueError) as exc_info:
-        Droplet('/temp/database.droplet')
-    
-    assert "The database path should point to a folder, not a file" == str(exc_info.value)
+def test_init_with_invalid_file(tmp_path):
+    path = tmp_path / 'invalid.txt'
+    path.touch()
+
+    with pytest.raises(ValueError, match="must be a directory or a .droplet file"):
+        Droplet(path)
+
+
+def test_init_with_directory_named_droplet(tmp_path):
+    path = tmp_path / 'storage.droplet'
+    path.mkdir()
+
+    with pytest.raises(ValueError, match="points to a directory"):
+        Droplet(path)

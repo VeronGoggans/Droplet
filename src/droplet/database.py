@@ -137,7 +137,7 @@ class Droplet:
         Returns:
             The value that was stored.
         """
-        self.validate_input(ttl, namespace)
+        self.__validate_input(ttl, namespace)
         key = self.__get_key(key, namespace)
         
         operation = UPDATE if key in self.data else ADD
@@ -188,7 +188,7 @@ class Droplet:
         Returns:
             The dictionary of key-value pairs that were stored.
         """
-        self.validate_input(ttl, namespace)
+        self.__validate_input(ttl, namespace)
         buffer = bytearray()
         stored_items = {}
 
@@ -196,7 +196,7 @@ class Droplet:
             key = self.__get_key(key, namespace)
             operation = UPDATE if key in self.data else ADD
             
-            stored_items[key] = value
+            stored_items[key] = asdict(value)
             buffer.extend(self.__create_record(key, asdict(value), operation, ttl))  
             
             if ttl > 0:
@@ -222,7 +222,7 @@ class Droplet:
         Returns:
             The dictionary of key-value pairs that were stored.
         """
-        self.validate_input(ttl, namespace)
+        self.__validate_input(ttl, namespace)
         buffer = bytearray()
         stored_items = {}
 
@@ -254,7 +254,7 @@ class Droplet:
         Returns:
             The value that was deleted, or False if the key does not exist.
         """
-        self.validate_input(0, namespace)
+        self.__validate_input(0, namespace)
         key = self.__get_key(key, namespace)
 
         if not key in self.data:
@@ -284,7 +284,7 @@ class Droplet:
             A dictionary containing the requested keys and their previous
             values. Keys that did not exist, are not included.
         """
-        self.validate_input(0, namespace)
+        self.__validate_input(0, namespace)
         buffer = bytearray()
         deleted_items = {}
         
@@ -385,14 +385,14 @@ class Droplet:
 
 
 
-    def view(self):
+    def view(self) -> dict:
         """
         Return all key-value pairs in the database.
 
         Returns:
             A view containing the database's key-value pairs.
         """
-        return self.data.items()
+        return dict(self.data.items())
 
 
 
@@ -460,7 +460,7 @@ class Droplet:
 
 
     def ttl(self, key: str, namespace: str = '') -> int:
-        self.validate_input(0, namespace)
+        self.__validate_input(0, namespace)
         key = self.__get_key(key, namespace)
         
         expiration = self.expirations.get(key, 0)
@@ -632,7 +632,7 @@ class Droplet:
             The value associated with the key, or `default` if the key does not
             exist.
         """
-        self.validate_input(0, namespace)
+        self.__validate_input(0, namespace)
         key = self.__get_key(key, namespace)
 
         if self.__is_expired(key):
@@ -647,7 +647,7 @@ class Droplet:
 
 
     def get_namespace(self, namespace: str) -> dict[str, SupportedType]:
-        self.validate_input(0, namespace)
+        self.__validate_input(0, namespace)
         items = {}
 
         for key, value in self.data.items():
@@ -739,7 +739,7 @@ class Droplet:
         Returns:
             True if the key exists, otherwise False.
         """
-        self.validate_input(0, namespace)
+        self.__validate_input(0, namespace)
         key = self.__get_key(key, namespace)
 
         if self.__is_expired(key):
@@ -802,9 +802,12 @@ class Droplet:
 
 
 
-    def validate_input(self, ttl: int, namespace: str) -> None:
+    def __validate_input(self, ttl: int, namespace: str) -> None:
         if not isinstance(ttl, int):
             raise ValueError('ttl must be an int')
+
+        if ttl < 0:
+            raise ValueError('ttl must be a positive int')
 
         if not isinstance(namespace, str):
             raise ValueError('namespace must be a str')
@@ -818,41 +821,35 @@ class Droplet:
 
 
 
-    def __init_path(self, path: Path = None) -> Path:
+    def __init_path(self, path: str | Path | None = None) -> Path:
         """
-        Create the database file path from a directory path.
+        Resolve the database file path.
 
-        Args:
-            path: Path to the database file or a directory where the database file should be stored.
-                Defaults to the current working directory.
-
-        Returns:
-            The complete path to the database file.
+        Accepts:
+            - None: Uses the current working directory.
+            - Directory: Places database.droplet inside it.
+            - .droplet file: Uses the specified database file path.
 
         Raises:
-            ValueError: If the provided path is not a supported path type.
+            ValueError: If the path is invalid.
         """
         if path is None:
             return Path.cwd() / 'database.droplet'
-        
-        if isinstance(path, Path):
-            if path.is_dir():
-                return path / 'database.droplet'
-            
-            if path.is_file() and path.suffix == '.droplet':
-                return path
-            
-            if not path.exists():
-                return path
-            
-            else:
-                raise ValueError(
-                    f"Invalid path: {path}. "
-                    "The path must point to a directory or use the '.droplet' extension. "
-                    "Leave the path empty to use the current working directory."
-                )
 
-        raise ValueError(
-            f'Expecting a Path or None, not {type(path)}.'
-        )
+        if not isinstance(path, (str, Path)):
+            raise ValueError(
+                f"Expected str, Path or None, got {type(path).__name__}"
+            )
+
+        path = Path(path)
+
+        if path.suffix == '.droplet':
+            if path.is_dir():
+                raise ValueError("Database file path points to a directory")
+            return path
+
+        if path.is_file():
+            raise ValueError("The database path must be a directory or a .droplet file")
+
+        return path / 'database.droplet'
 
