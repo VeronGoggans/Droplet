@@ -1,4 +1,4 @@
-![Droplet Logo](docs/droplet-logo.png)
+<img src="docs/droplet-poster.png" alt="Droplet Poster" width="400">
 
 # Droplet
 
