@@ -1,6 +1,7 @@
 <p align="center">
   <img src="docs/droplet-poster.png" alt="Droplet Poster" width="400">
 </p>
+
 # Droplet
 
 **Small. Simple. Flexible.**
