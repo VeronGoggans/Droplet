@@ -201,6 +201,18 @@ db.decrement("visits", 2)
 print(db.get("visits"))  # 3
 ```
 
+### Context managers
+```python
+from droplet import Droplet
+
+with Droplet(path='app.droplet', mode='persistent') as db:
+    db.set('name', 'Stormy')
+    print(db.get('name')) # Stormy
+    print(db.is_open) # True
+
+print(db.is_open) # False
+```
+
 ### Inspecting data
 
 ```python
