@@ -32,3 +32,6 @@ classifiers = [
 [project.urls]
 Repository = "https://github.com/VeronGoggans/Droplet"
 Issues = "https://github.com/VeronGoggans/Droplet/issues"
+
+[project.scripts]
+droplet = "droplet.cli.main:main"

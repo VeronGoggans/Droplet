@@ -650,11 +650,11 @@ class Droplet:
 
         if self.__is_expired(key):
             self.delete(key)
-            raise KeyError(key)
+            raise KeyError(f'{key} not found')
 
         value = self.data.get(key, _MISSING)
         if value == _MISSING:
-            raise KeyError(key)
+            raise KeyError(f'{key} not found')
         return value
 
 
