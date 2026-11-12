@@ -1,5 +1,6 @@
 from droplet import Droplet
 from argparse import Namespace
+from typing import Union
 from .parsers import type_parser
 
 
@@ -28,15 +29,35 @@ def count(db: Droplet) -> None:
 
 
 def view(db: Droplet) -> None:
-    print(db.view())
+    pairs = db.view()
+    if _is_db_empty(pairs): return
+
+    # Find the maximum length of the keys for perfect alignment
+    max_key_len = max(len(str(k)) for k in pairs.keys())
+
+    print("=" * 45)
+    print(f"{'DATABASE RECORDS':^45}")
+    print("=" * 45)
+    
+    for key, value in pairs.items():
+        # {str(key):<max_key_len} left-aligns the key with padding
+        print(f" {str(key):<{max_key_len}} : {value}")
+        
+    print("=" * 45)
 
 
 def values(db: Droplet) -> None:
-    print(db.values())
+    db_values = db.values()
+    if _is_db_empty(db_values): return
+    
+    print(db_values)
 
 
 def keys(db: Droplet) -> None:
-    print(db.keys())
+    db_keys = db.keys()
+    if _is_db_empty(db_keys): return
+
+    print(db_keys)
 
 
 def increment(db: Droplet, args: Namespace) -> None:
@@ -120,3 +141,15 @@ def exists(db: Droplet, args: Namespace) -> None:
         namespace=args.namespace
     )
     print(f'EXISTS {str(item_exists).lower()}')
+
+
+def clear_db(db: Droplet, args: Namespace) -> None:
+    db.clear()
+    print(f'{db.path} has been cleared')
+
+
+def _is_db_empty(iterable: Union[dict, list]) -> None:
+    if not iterable:
+        print('Database is empty.')
+        return True
+    return False

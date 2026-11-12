@@ -27,6 +27,7 @@ def main():
     commands.add_parser('values')
     commands.add_parser('count')
     commands.add_parser('view')
+    commands.add_parser('clear')
     
     size_parser = commands.add_parser('size')
     size_parser.add_argument(
@@ -44,6 +45,7 @@ def main():
     increment_parser.add_argument('--namespace', default='', type=str)
 
     decrement_parser = commands.add_parser('decr')
+    decrement_parser.add_argument('key')
     decrement_parser.add_argument('--amount', default=1, type=int)
     decrement_parser.add_argument('--namespace', default='', type=str)
 
@@ -125,6 +127,8 @@ def main():
                     decrement(db, args)
                 case 'ttl':
                     ttl(db, args)
+                case 'clear':
+                    clear_db(db, args)
 
         except KeyError as e:
             print(str(e))
