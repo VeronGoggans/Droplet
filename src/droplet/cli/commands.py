@@ -2,6 +2,25 @@ from droplet import Droplet
 from argparse import Namespace
 from typing import Union
 from .parsers import type_parser
+from .assets import GREEN, RED, BOLD, RESET
+
+
+
+def _output(text: str) -> None:
+    print(f'→ {text}')
+
+
+def _success(text: str) -> None:
+    _output(f'{GREEN}{text}{RESET}')
+
+
+def error(text: str) -> None:
+    _output(f'{RED}{text}{RESET}')
+
+
+def _bold(text: str) -> None:
+    _output(f'→ {BOLD}{text}{RESET}')
+
 
 
 
@@ -14,18 +33,18 @@ def size(db: Droplet, args: Namespace) -> None:
     gb = size / (1024 ** 3)
 
     if unit == 'bytes':
-        print(f'SIZE Bytes: {size}')
+        print(f'{size} bytes')
     if unit == 'kb':
-        print(f'SIZE KiB: {kb:.2f}')
+        print(f'{kb:.2f} kb')
     if unit == 'mb':
-        print(f'SIZE MiB: {mb:.2f}')
+        print(f'{mb:.2f} mb')
     if unit == 'gb':
-        print(f'SIZE GiB: {gb:.2f}')
+        print(f'{gb:.2f} gb')
 
 
 
 def count(db: Droplet) -> None:
-    print(f'Number of keys: {db.count()}')
+    _output(db.count())
 
 
 def view(db: Droplet) -> None:
@@ -35,29 +54,29 @@ def view(db: Droplet) -> None:
     # Find the maximum length of the keys for perfect alignment
     max_key_len = max(len(str(k)) for k in pairs.keys())
 
-    print("=" * 45)
-    print(f"{'DATABASE RECORDS':^45}")
-    print("=" * 45)
+    print("_" * 45)
+    print(f"{BOLD}{'DATABASE RECORDS':^45}{RESET}")
+    print("_" * 45)
     
     for key, value in pairs.items():
         # {str(key):<max_key_len} left-aligns the key with padding
-        print(f" {str(key):<{max_key_len}} : {value}")
+        print(f" {BOLD}{str(key):<{max_key_len}}{RESET} : {value}")
         
-    print("=" * 45)
+    print("_" * 45)
 
 
 def values(db: Droplet) -> None:
     db_values = db.values()
     if _is_db_empty(db_values): return
     
-    print(db_values)
+    _output(db_values)
 
 
 def keys(db: Droplet) -> None:
     db_keys = db.keys()
     if _is_db_empty(db_keys): return
 
-    print(db_keys)
+    _output(db_keys)
 
 
 def increment(db: Droplet, args: Namespace) -> None:
@@ -66,7 +85,8 @@ def increment(db: Droplet, args: Namespace) -> None:
         args.amount,
         args.namespace
     )
-    print(f'INCREMENT {args.key}: {new_value}')
+    print(new_value)
+    _output(new_value)
 
 
 def decrement(db: Droplet, args: Namespace) -> None:
@@ -75,32 +95,25 @@ def decrement(db: Droplet, args: Namespace) -> None:
         args.amount,
         args.namespace
     )
-    print(f'DECREMENT {args.key}: {new_value}')
+    _output(new_value)
 
 
 def delete_item(db: Droplet, args: Namespace) -> None:
-    deleted_value = db.delete(
+    db.delete(
         args.key, 
         args.namespace
     )
-    print(f'DELETE {args.key}: {deleted_value}')
-
+    _success('Key deleted successfully.')
+    
 
 def set_item(db: Droplet, args: Namespace) -> None:
-    key = args.key
-    namespace = args.namespace
-
-    value = db.set(
-        key=key,
+    db.set(
+        key=args.key,
         value=type_parser(args.value, args.type, args.iterable_type),
         ttl=args.ttl,
-        namespace=namespace
+        namespace=args.namespace
     )
-
-    if namespace:
-        print(f'SET {namespace}:{key}: {value}')
-    else:
-        print(f'SET {key}: {value}')
+    _success('Value stored successfully.')
 
 
 def get_item(db: Droplet, args: Namespace) -> None:
@@ -111,9 +124,9 @@ def get_item(db: Droplet, args: Namespace) -> None:
     )
 
     if args.inspect:
-        print(f'GET {key}: {value} {type(value)}')
+        _output(f'{value} {BOLD}{type(value)}{RESET}')
     else:
-        print(f'GET {key}: {value}')
+        _output(value)
 
 
 def ttl(db: Droplet, args: Namespace) -> None:
@@ -128,11 +141,11 @@ def ttl(db: Droplet, args: Namespace) -> None:
     hours = time / (60 * 60)
 
     if unit == 'min':
-        print(f'TTL minutes remaining: {minutes}')
+        _output(f'Minutes remaining: {minutes}')
     elif unit == 'hrs':
-        print(f'TTL hours remaining: {hours}')
+        _output(f'Hours remaining: {hours}')
     else:
-        print(f'TTL seconds remaining: {time}')
+        _output(f'Seconds remaining: {time}')
 
 
 def exists(db: Droplet, args: Namespace) -> None:
@@ -140,16 +153,16 @@ def exists(db: Droplet, args: Namespace) -> None:
         key=args.key, 
         namespace=args.namespace
     )
-    print(f'EXISTS {str(item_exists).lower()}')
+    _output(str(item_exists).upper())
 
 
 def clear_db(db: Droplet, args: Namespace) -> None:
     db.clear()
-    print(f'{db.path} has been cleared')
+    _success(f'{db.path} has been cleared')
 
 
 def _is_db_empty(iterable: Union[dict, list]) -> None:
     if not iterable:
-        print('Database is empty.')
+        _bold('Database is empty.')
         return True
     return False

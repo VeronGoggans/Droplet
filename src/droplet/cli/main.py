@@ -1,11 +1,51 @@
 import argparse
+import shlex
 
+from .assets import *
 from droplet import Droplet
 from .commands import *
 
 
 
-def main():
+
+
+def execute_command(db: Droplet, args: Namespace) -> None:
+    try:
+        match args.command:
+            case 'get':
+                get_item(db, args)
+            case 'set':
+                set_item(db, args)
+            case 'del':
+                delete_item(db, args)
+            case 'exists':
+                exists(db, args)
+            case 'keys':
+                keys(db)
+            case 'values':
+                values(db)
+            case 'count':
+                count(db)
+            case 'view':
+                view(db)
+            case 'size':
+                size(db, args)
+            case 'incr':
+                increment(db, args)
+            case 'decr':
+                decrement(db, args)
+            case 'ttl':
+                ttl(db, args)
+            case 'drop':
+                clear_db(db, args)
+
+    except KeyError as e:
+        print(str(e))
+
+
+
+
+def construct_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog='droplet',
         description='Droplet key-value database CLI'
@@ -23,11 +63,12 @@ def main():
     )
 
     # Utilities
+    commands.add_parser('open')
     commands.add_parser('keys')
     commands.add_parser('values')
     commands.add_parser('count')
     commands.add_parser('view')
-    commands.add_parser('clear')
+    commands.add_parser('drop')
     
     size_parser = commands.add_parser('size')
     size_parser.add_argument(
@@ -98,40 +139,46 @@ def main():
         help="Time unit of ttl time remaining (default: sec)"
     )
 
-    args = parser.parse_args()
- 
-    with Droplet(args.file, 'persistent') as db:
-        try:
-            match args.command:
-                case 'get':
-                    get_item(db, args)
-                case 'set':
-                    set_item(db, args)
-                case 'del':
-                    delete_item(db, args)
-                case 'exists':
-                    exists(db, args)
-                case 'keys':
-                    keys(db)
-                case 'values':
-                    values(db)
-                case 'count':
-                    count(db)
-                case 'view':
-                    view(db)
-                case 'size':
-                    size(db, args)
-                case 'incr':
-                    increment(db, args)
-                case 'decr':
-                    decrement(db, args)
-                case 'ttl':
-                    ttl(db, args)
-                case 'clear':
-                    clear_db(db, args)
+    return parser
 
-        except KeyError as e:
-            print(str(e))
+
+
+def main():
+    parser = construct_parser()
+    args = parser.parse_args()
+
+    with Droplet(args.file, 'persistent') as db:
+        print(f'{BOLD}{BLUE}{droplet_ascii}{RESET}')
+
+        while True:
+
+            try:
+                command = input(f"💧 {BLUE}droplet>{RESET} ").strip()
+                if not command:
+                    continue
+
+                if command.lower() in ('exit', 'quit'):
+                    raise KeyboardInterrupt()
+
+                command_args = shlex.split(command)
+
+                try:
+                    parsed_args = parser.parse_args(
+                        ['--file', args.file, *command_args] 
+                    )
+                except SystemExit:
+                    continue
+
+                execute_command(db, parsed_args)
+            
+            except (KeyboardInterrupt, EOFError):
+                print(f'{GREY}Exiting Droplet...{RESET}')
+                break
+
+            except Exception as e:
+                error(str(e))
+
+ 
 
 if __name__ == '__main__':
     main()

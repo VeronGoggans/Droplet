@@ -1,6 +1,7 @@
 venv/
 __pycache__/
 *.droplet
+*.droplet.temp
 *.keys
 *.json
 *.py[cod]

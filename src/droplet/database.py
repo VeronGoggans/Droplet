@@ -448,6 +448,7 @@ class Droplet:
         if isinstance(value, int):
             new_value = self.data[key] + amount
             return self.set(key, new_value)
+        raise ValueError(f"Unsupported operator '+' for type: {type(value)}")
 
 
 
@@ -469,6 +470,7 @@ class Droplet:
         if isinstance(value, int):
             new_value = self.data[key] - amount
             return self.set(key, new_value)
+        raise ValueError(f"Unsupported operator '-' for type: {type(value)}")
 
 
 
