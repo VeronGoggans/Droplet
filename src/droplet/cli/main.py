@@ -42,6 +42,10 @@ def execute_command(db: Droplet, args: Namespace) -> None:
                 compact_db(db, args)
             case 'namespace':
                 get_namespace(db, args)
+            case 'export':
+                export_db(db, args)
+            case 'import':
+                import_db(db, args)
 
     except KeyError as e:
         print(str(e))
@@ -74,6 +78,10 @@ def construct_parser() -> argparse.ArgumentParser:
     commands.add_parser('view')
     commands.add_parser('drop')
     commands.add_parser('compact')
+    commands.add_parser('export')
+    
+    import_parser = commands.add_parser('import')
+    import_parser.add_argument('path', type=str)
     
     size_parser = commands.add_parser('size')
     size_parser.add_argument(

@@ -47,6 +47,7 @@ class Droplet:
         self.file = None
         self.data = {}
         self.expirations = {}
+        self.rate_limits = {}
         self.is_open = False
         self.path: Path = self.__init_path(path)
 
@@ -429,6 +430,65 @@ class Droplet:
         """
         return self.path.stat().st_size
     
+
+
+    def rate_limit(self, key: str, limit: int = 0, window: int = 0) -> None:
+        """
+        Create or configure a rate limit for a key.
+
+        Args:
+            key: Identifier for the rate limit.
+            limit: Maximum number of allowed requests per window.
+            window: Rate limit duration in seconds.
+
+        Raises:
+            ValueError: If limit or window is not a positive integer.
+        """
+        if not isinstance(limit, int) or not isinstance(window, int):
+            raise ValueError(f'Limit and window must be of type {type(1)}')
+
+        if limit < 1 or window < 1:
+            raise ValueError('Limit and window must be positive integers')
+
+        self.rate_limits[key] = {
+            'count': 0,
+            'limit': limit,
+            'window': window,
+            'exp': time.time() + window
+        }
+
+
+
+    def increment_rate_limit(self, key: str) -> None:
+        """
+        Record a request against an existing rate limit.
+
+        Increments the request count if the limit has not been reached.
+        Resets the counter and starts a new window if the previous window
+        has expired.
+
+        Args:
+            key: Identifier of the rate limit to increment.
+
+        Raises:
+            ValueError: If the rate limit does not exist or has been exceeded.
+        """
+        data = self.rate_limits.get(key, None)
+        
+        if data is None:
+            raise ValueError(f"'{key}' does not have a rate limit")
+
+        current_time = time.time()
+        expiration = data['exp']
+
+        if current_time < expiration:
+            if data['count'] == data['limit']:
+                raise ValueError(f"'{key}' has exceeded it's rate limit")
+            data['count'] += 1
+        else:
+            data['count'] = 1
+            data['exp'] = current_time + data['window'] 
+
 
 
     def increment(self, key: str, amount: int = 1, namespace: str = '') -> int:

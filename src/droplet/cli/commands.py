@@ -1,6 +1,8 @@
 from droplet import Droplet
 from argparse import Namespace
 from typing import Union
+from json import load as load_json
+from pathlib import Path
 from .parsers import type_parser
 from .assets import GREEN, RED, BOLD, RESET
 
@@ -179,6 +181,28 @@ def clear_db(db: Droplet, args: Namespace) -> None:
 def compact_db(db: Droplet, args: Namespace) -> None:
     db.compact()
     _success(f'Compaction successful')
+
+
+def export_db(db: Droplet, args: Namespace) -> None:
+    db.export_to_json()
+    _success('Export successful')
+
+
+def import_db(db: Droplet, args: Namespace) -> None:
+    try:
+        path = Path(args.path)
+        
+        if not path.exists():
+            raise ValueError(f'Path: {path} does not exist')
+
+        with open(path, 'r') as file:
+            data = load_json(file)    
+
+        db.import_from_json(data)
+    except Exception as e:
+        error(f'Failed to import {str(e)}')
+
+    _success('Import successful')
 
 
 def _is_db_empty(iterable: Union[dict, list]) -> None:
