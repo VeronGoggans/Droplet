@@ -744,6 +744,7 @@ class Droplet:
         return items
 
 
+
     def exists(self, key: str, namespace: str = '') -> bool:
         """
         Check whether a key exists in the database.

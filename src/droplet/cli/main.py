@@ -38,6 +38,10 @@ def execute_command(db: Droplet, args: Namespace) -> None:
                 ttl(db, args)
             case 'drop':
                 clear_db(db, args)
+            case 'compact':
+                compact_db(db, args)
+            case 'namespace':
+                get_namespace(db, args)
 
     except KeyError as e:
         print(str(e))
@@ -69,6 +73,7 @@ def construct_parser() -> argparse.ArgumentParser:
     commands.add_parser('count')
     commands.add_parser('view')
     commands.add_parser('drop')
+    commands.add_parser('compact')
     
     size_parser = commands.add_parser('size')
     size_parser.add_argument(
@@ -96,6 +101,10 @@ def construct_parser() -> argparse.ArgumentParser:
     get_parser.add_argument('--namespace', default='', type=str)
     get_parser.add_argument('--inspect', action="store_true")
 
+    # NAMESPACE
+    namespace_parser = commands.add_parser('namespace')
+    namespace_parser.add_argument('name')
+
     # SET
     set_parser = commands.add_parser('set')
     set_parser.add_argument('key')
@@ -118,9 +127,9 @@ def construct_parser() -> argparse.ArgumentParser:
     )
 
     # Exists
-    get_parser = commands.add_parser('exists')
-    get_parser.add_argument('key')
-    get_parser.add_argument('--namespace', default='', type=str)
+    exists_parser = commands.add_parser('exists')
+    exists_parser.add_argument('key')
+    exists_parser.add_argument('--namespace', default='', type=str)
 
     # DELETE
     delete_parser = commands.add_parser('del')

@@ -19,9 +19,7 @@ def error(text: str) -> None:
 
 
 def _bold(text: str) -> None:
-    _output(f'→ {BOLD}{text}{RESET}')
-
-
+    _output(f'{BOLD}{text}{RESET}')
 
 
 def size(db: Droplet, args: Namespace) -> None:
@@ -54,12 +52,10 @@ def view(db: Droplet) -> None:
     # Find the maximum length of the keys for perfect alignment
     max_key_len = max(len(str(k)) for k in pairs.keys())
 
-    print("_" * 45)
     print(f"{BOLD}{'DATABASE RECORDS':^45}{RESET}")
     print("_" * 45)
     
     for key, value in pairs.items():
-        # {str(key):<max_key_len} left-aligns the key with padding
         print(f" {BOLD}{str(key):<{max_key_len}}{RESET} : {value}")
         
     print("_" * 45)
@@ -129,6 +125,25 @@ def get_item(db: Droplet, args: Namespace) -> None:
         _output(value)
 
 
+def get_namespace(db: Droplet, args: Namespace) -> None:
+    namespace: str = args.name
+    values = db.get_namespace(namespace=namespace)
+
+    if not values:
+        _output(f'{namespace} is empty or does not exist')
+        return
+
+    max_key_len = max(len(str(k)) for k in values.keys())
+
+    print(f"{BOLD}{namespace.upper() + ' NAMESPACE':^45}{RESET}")
+    print("_" * 45)
+    
+    for key, value in values.items():
+        print(f" {BOLD}{str(key):<{max_key_len}}{RESET} : {value}")
+        
+    print("_" * 45)
+    
+
 def ttl(db: Droplet, args: Namespace) -> None:
     unit = args.unit
 
@@ -159,6 +174,11 @@ def exists(db: Droplet, args: Namespace) -> None:
 def clear_db(db: Droplet, args: Namespace) -> None:
     db.clear()
     _success(f'{db.path} has been cleared')
+
+
+def compact_db(db: Droplet, args: Namespace) -> None:
+    db.compact()
+    _success(f'Compaction successful')
 
 
 def _is_db_empty(iterable: Union[dict, list]) -> None:
