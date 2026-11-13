@@ -212,14 +212,18 @@ def test_increment_missing_key(db):
 def test_increment_non_integer(db):
     db.set("name", "Alice")
 
-    assert db.increment("name") is None
+    with pytest.raises(ValueError):
+        db.increment("name")
+
     assert db.get("name") == "Alice"
 
 
 def test_increment_float(db):
     db.set("score", 10.5)
 
-    assert db.increment("score") is None
+    with pytest.raises(ValueError):
+        db.increment("score")
+    
     assert db.get("score") == 10.5
 
 
@@ -283,15 +287,19 @@ def test_decrement_missing_key(db):
 
 def test_decrement_non_integer(db):
     db.set("name", "Alice")
+    with pytest.raises(ValueError):
+        db.decrement("name")
 
-    assert db.decrement("name") is None
     assert db.get("name") == "Alice"
 
 
 def test_decrement_float(db):
     db.set("score", 10.5)
 
-    assert db.decrement("score") is None
+    with pytest.raises(ValueError):
+        db.decrement("score")
+
+    assert db.get("score") == 10.5
 
 
 def test_decrement_boolean(db):
