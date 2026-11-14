@@ -1,5 +1,6 @@
 import struct
 from uuid import UUID
+from droplet.exceptions import DeserializationError
 from droplet.types import (
     SupportedType,
     STRING,
@@ -121,113 +122,115 @@ def deserialize(type_id: int, value: bytes) -> SupportedType:
     Raises:
         TypeError: If the type ID is unknown.
     """
+    try:
     
-    if type_id == STRING:
-        return value.decode("utf-8")
+        if type_id == STRING:
+            return value.decode("utf-8")
 
-    if type_id == BOOLEAN:
-        return bool(struct.unpack(UNSIGNED_CHAR, value)[0])
+        if type_id == BOOLEAN:
+            return bool(struct.unpack(UNSIGNED_CHAR, value)[0])
 
-    if type_id == UUID_TYPE:
-        return UUID(bytes=value)
+        if type_id == UUID_TYPE:
+            return UUID(bytes=value)
 
-    if type_id == NONE:
-        return None
+        if type_id == NONE:
+            return None
 
-    if type_id == BYTES:
-        return value
+        if type_id == BYTES:
+            return value
 
-    if type_id == INTEGER:
-        return struct.unpack(SIGNED_64_BIT_INTEGER, value)[0]
+        if type_id == INTEGER:
+            return struct.unpack(SIGNED_64_BIT_INTEGER, value)[0]
 
-    if type_id == FLOAT:
-        return struct.unpack(SIGNED_64_BIT_FLOAT, value)[0]
+        if type_id == FLOAT:
+            return struct.unpack(SIGNED_64_BIT_FLOAT, value)[0]
 
-    if type_id == DICT:
-        offset = 0
+        if type_id == DICT:
+            offset = 0
 
-        # Number of key/value pairs in the dict
-        entry_count = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
+            # Number of key/value pairs in the dict
+            entry_count = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
 
-        # Move offset to the next piece of data
-        offset += struct.calcsize(UNSIGNED_INT)
-
-        result = {}
-
-        for _ in range(entry_count):
-
-            # Read the key type id 
-            key_type = struct.unpack_from(UNSIGNED_CHAR, value, offset)[0]
-
-            # Move the offset to the key length
-            offset += struct.calcsize(UNSIGNED_CHAR)
-
-            # Read the key length
-            key_length = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
-
-            # Move the offset to the actual key data
+            # Move offset to the next piece of data
             offset += struct.calcsize(UNSIGNED_INT)
 
-            # Read the key bytes
-            key_data = value[offset:offset + key_length]
+            result = {}
+
+            for _ in range(entry_count):
+
+                # Read the key type id 
+                key_type = struct.unpack_from(UNSIGNED_CHAR, value, offset)[0]
+
+                # Move the offset to the key length
+                offset += struct.calcsize(UNSIGNED_CHAR)
+
+                # Read the key length
+                key_length = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
+
+                # Move the offset to the actual key data
+                offset += struct.calcsize(UNSIGNED_INT)
+
+                # Read the key bytes
+                key_data = value[offset:offset + key_length]
+                
+                # Move the offset to the 
+                offset += key_length
+
+                item_type = struct.unpack_from(UNSIGNED_CHAR, value, offset)[0]
+
+                offset += struct.calcsize(UNSIGNED_CHAR)
+
+                item_length = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
+
+                offset += struct.calcsize(UNSIGNED_INT)
+
+                item_data = value[offset:offset + item_length]
+                offset += item_length
+
+                key = deserialize(key_type, key_data)
+                item = deserialize(item_type, item_data)
+
+                result[key] = item
+
+            return result
+
+        if type_id == LIST or type_id == TUPLE:
+            offset = 0
+
+            # Number of items in the iterable
+            entry_count = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
+
+            # Move offset to the next piece of data
+            offset += struct.calcsize(UNSIGNED_INT)
+
+            result = []
+
+            for _ in range(entry_count):
+                # Read the value type id 
+                value_type_id = struct.unpack_from(UNSIGNED_CHAR, value, offset)[0]
+
+                # Move the offset to the key length
+                offset += struct.calcsize(UNSIGNED_CHAR)
+
+                # Read the value length
+                value_length = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
+
+                # Move the offset to the actual value data
+                offset += struct.calcsize(UNSIGNED_INT)
+
+                value_data = value[offset:offset + value_length]
+                offset += value_length
+
+                d_value = deserialize(value_type_id, value_data)
+                result.append(d_value)
+
+
+            if type_id == TUPLE:
+                result = tuple(result)
             
-            # Move the offset to the 
-            offset += key_length
+            return result
 
-            item_type = struct.unpack_from(UNSIGNED_CHAR, value, offset)[0]
-
-            offset += struct.calcsize(UNSIGNED_CHAR)
-
-            item_length = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
-
-            offset += struct.calcsize(UNSIGNED_INT)
-
-            item_data = value[offset:offset + item_length]
-            offset += item_length
-
-            key = deserialize(key_type, key_data)
-            item = deserialize(item_type, item_data)
-
-            result[key] = item
-
-        return result
-
-    if type_id == LIST or type_id == TUPLE:
-        offset = 0
-
-        # Number of items in the iterable
-        entry_count = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
-
-        # Move offset to the next piece of data
-        offset += struct.calcsize(UNSIGNED_INT)
-
-        result = []
-
-        for _ in range(entry_count):
-            # Read the value type id 
-            value_type_id = struct.unpack_from(UNSIGNED_CHAR, value, offset)[0]
-
-            # Move the offset to the key length
-            offset += struct.calcsize(UNSIGNED_CHAR)
-
-            # Read the value length
-            value_length = struct.unpack_from(UNSIGNED_INT, value, offset)[0]
-
-            # Move the offset to the actual value data
-            offset += struct.calcsize(UNSIGNED_INT)
-
-            value_data = value[offset:offset + value_length]
-            offset += value_length
-
-            d_value = deserialize(value_type_id, value_data)
-            result.append(d_value)
-
-
-        if type_id == TUPLE:
-            result = tuple(result)
-        
-        return result
-
-    raise TypeError(f"Unknown type ID: {type_id}")
-
-
+        raise TypeError(f"Unknown type ID: {type_id}")
+    
+    except Exception as e:
+        raise DeserializationError(f'Error during deserialization: {str(e)}')

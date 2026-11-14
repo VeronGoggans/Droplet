@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Union
 from dataclasses import asdict
 
+from droplet.exceptions import DeserializationError
 from droplet.namespace import Namespace
 from droplet.types import SupportedType, _MISSING, T, UUID, StorageMode
 from droplet.serializer import serialize, deserialize
@@ -117,6 +118,9 @@ class Droplet:
 
         except FileNotFoundError:
             self.data = {}
+        except DeserializationError:
+            # The corrupted record will not be included in-memory
+            pass
         
         self.is_open = True
 
@@ -158,7 +162,7 @@ class Droplet:
         self.__serialize_and_write(key, value, ttl)
         self.data[key] = value
 
-        if ttl > 0:
+        if ttl:
             self.expirations[key] = time.time() + ttl
 
         return value
@@ -210,7 +214,7 @@ class Droplet:
                 operation = UPDATE if key in self.data else ADD
                 buffer.extend(self.__create_record(key, asdict(value), operation, ttl))  
             
-            if ttl > 0:
+            if ttl:
                 self.expirations[key] = time.time() + ttl  
 
 
@@ -244,7 +248,7 @@ class Droplet:
                 operation = UPDATE if key in self.data else ADD
                 buffer.extend(self.__create_record(key, value, operation, ttl))
             
-            if ttl > 0:
+            if ttl:
                 self.expirations[key] = time.time() + ttl
 
 
@@ -692,9 +696,6 @@ class Droplet:
         if not isinstance(data, dict):
             raise ValueError('The JSON needs to be a valid dict')
 
-        if self.data:
-            raise ValueError('You can only import if the database is empty')
-
         self.set_batch(data)
 
 
@@ -857,7 +858,7 @@ class Droplet:
         """
         type_id, value_bytes = serialize(value)
         key_bytes: bytes = key.encode('utf-8')
-        expiration = time.time() + ttl if ttl > 0 else 0
+        expiration = time.time() + ttl if ttl else 0
 
         if operation == DELETE:    
             return struct.pack(
