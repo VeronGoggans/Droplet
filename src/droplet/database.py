@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Union
 from dataclasses import asdict
 
+from droplet.namespace import Namespace
 from droplet.types import SupportedType, _MISSING, T, UUID, StorageMode
 from droplet.serializer import serialize, deserialize
 from droplet.exporter import export_to_json
@@ -432,7 +433,7 @@ class Droplet:
     
 
 
-    def rate_limit(self, key: str, limit: int = 0, window: int = 0) -> None:
+    def rate_limit(self, key: str, limit: int = 0, window: int = 0, namespace: str = '') -> None:
         """
         Create or configure a rate limit for a key.
 
@@ -444,6 +445,8 @@ class Droplet:
         Raises:
             ValueError: If limit or window is not a positive integer.
         """
+        key = self.__get_key(key, namespace)
+
         if not isinstance(limit, int) or not isinstance(window, int):
             raise ValueError(f'Limit and window must be of type {type(1)}')
 
@@ -459,7 +462,7 @@ class Droplet:
 
 
 
-    def increment_rate_limit(self, key: str) -> None:
+    def increment_rate_limit(self, key: str, namespace: str = '') -> None:
         """
         Record a request against an existing rate limit.
 
@@ -473,6 +476,7 @@ class Droplet:
         Raises:
             ValueError: If the rate limit does not exist or has been exceeded.
         """
+        key = self.__get_key(key, namespace)
         data = self.rate_limits.get(key, None)
         
         if data is None:
@@ -730,6 +734,11 @@ class Droplet:
                 items[key] = value
 
         return items
+
+
+
+    def namespace(self, name: str) -> Namespace:
+        return Namespace(self, name)
 
 
 

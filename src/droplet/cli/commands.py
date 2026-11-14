@@ -1,15 +1,28 @@
+import json
+
 from droplet import Droplet
+from droplet.types import SupportedType
 from argparse import Namespace
 from typing import Union
-from json import load as load_json
 from pathlib import Path
 from .parsers import type_parser
 from .assets import GREEN, RED, BOLD, RESET
 
 
 
-def _output(text: str) -> None:
-    print(f'→ {text}')
+def _output(value: SupportedType) -> None:
+    if isinstance(value, list) or isinstance(value, tuple):
+        for item in value:
+            if isinstance(item, dict):
+                print(json.dumps(item, indent=4))
+            else:
+                print(f'→ {value}') 
+    
+    if isinstance(value, dict):
+        print(json.dumps(item, indent=4))
+    
+    else:
+        print(f'→ {value}')
 
 
 def _success(text: str) -> None:
@@ -196,7 +209,7 @@ def import_db(db: Droplet, args: Namespace) -> None:
             raise ValueError(f'Path: {path} does not exist')
 
         with open(path, 'r') as file:
-            data = load_json(file)    
+            data = json.load(file)    
 
         db.import_from_json(data)
     except Exception as e:
