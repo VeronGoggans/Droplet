@@ -107,7 +107,7 @@ def construct_parser() -> argparse.ArgumentParser:
     get_parser = commands.add_parser('get')
     get_parser.add_argument('key')
     get_parser.add_argument('--namespace', default='', type=str)
-    get_parser.add_argument('--inspect', action="store_true")
+    get_parser.add_argument('-t', action="store_true")
 
     # NAMESPACE
     namespace_parser = commands.add_parser('namespace')
@@ -176,6 +176,10 @@ def main():
 
                 if command.lower() in ('exit', 'quit'):
                     raise KeyboardInterrupt()
+
+                if command.lower() in ('cls', 'clear'):
+                    clear_terminal()
+                    continue
 
                 command_args = shlex.split(command)
 

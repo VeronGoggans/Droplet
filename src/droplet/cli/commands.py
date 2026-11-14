@@ -11,16 +11,12 @@ from .assets import GREEN, RED, BOLD, RESET
 
 
 def _output(value: SupportedType) -> None:
-    if isinstance(value, list) or isinstance(value, tuple):
-        for item in value:
-            if isinstance(item, dict):
-                print(json.dumps(item, indent=4))
-            else:
-                print(f'→ {value}') 
-    
-    elif isinstance(value, dict):
-        print(json.dumps(item, indent=4))
-    
+    if isinstance(value, dict):
+        print(json.dumps(value, indent=4))
+
+    elif isinstance(value, list) or isinstance(value, tuple):
+        print(json.dumps(value, indent=4))
+
     else:
         print(f'→ {value}')
 
@@ -35,6 +31,10 @@ def error(text: str) -> None:
 
 def _bold(text: str) -> None:
     _output(f'{BOLD}{text}{RESET}')
+
+
+def clear_terminal() -> None:
+    print("\033[2J\033[H", end="", flush=True)
 
 
 def size(db: Droplet, args: Namespace) -> None:
@@ -64,16 +64,7 @@ def view(db: Droplet) -> None:
     pairs = db.view()
     if _is_db_empty(pairs): return
 
-    # Find the maximum length of the keys for perfect alignment
-    max_key_len = max(len(str(k)) for k in pairs.keys())
-
-    print(f"{BOLD}{'DATABASE RECORDS':^45}{RESET}")
-    print("_" * 45)
-    
-    for key, value in pairs.items():
-        print(f" {BOLD}{str(key):<{max_key_len}}{RESET} : {value}")
-        
-    print("_" * 45)
+    _output(pairs)
 
 
 def values(db: Droplet) -> None:
@@ -134,8 +125,8 @@ def get_item(db: Droplet, args: Namespace) -> None:
         namespace=args.namespace,
     )
 
-    if args.inspect:
-        _output(f'{value} {BOLD}{type(value)}{RESET}')
+    if args.t:
+        _output(f'{BOLD}{type(value)}{RESET}')
     else:
         _output(value)
 
@@ -148,15 +139,9 @@ def get_namespace(db: Droplet, args: Namespace) -> None:
         _output(f'{namespace} is empty or does not exist')
         return
 
-    max_key_len = max(len(str(k)) for k in values.keys())
-
-    print(f"{BOLD}{namespace.upper() + ' NAMESPACE':^45}{RESET}")
-    print("_" * 45)
     
-    for key, value in values.items():
-        print(f" {BOLD}{str(key):<{max_key_len}}{RESET} : {value}")
-        
-    print("_" * 45)
+    print(f"{BOLD}{namespace.upper() + ' NAMESPACE'}{RESET}")    
+    _output(values)
     
 
 def ttl(db: Droplet, args: Namespace) -> None:
