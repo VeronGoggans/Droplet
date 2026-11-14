@@ -18,7 +18,7 @@ def _output(value: SupportedType) -> None:
             else:
                 print(f'→ {value}') 
     
-    if isinstance(value, dict):
+    elif isinstance(value, dict):
         print(json.dumps(item, indent=4))
     
     else:
