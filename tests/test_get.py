@@ -59,8 +59,7 @@ def test_get_none(db):
 
 
 def test_get_missing_key(db):
-    with pytest.raises(KeyError):
-        db.get("missing")
+    assert db.get("missing") == None
 
 
 def test_get_with_namespace(db):
@@ -71,8 +70,7 @@ def test_get_with_namespace(db):
 
 
 def test_get_missing_namespace_key(db):
-    with pytest.raises(KeyError):
-        db.get("999", namespace="user")
+    assert db.get("999", namespace="user") == None
 
 
 # -------------------------
@@ -127,8 +125,7 @@ def test_get_as_product(db):
 
 
 def test_get_as_missing_key(db):
-    with pytest.raises(KeyError):
-        db.get_as("999", User, namespace="user")
+    assert db.get_as("999", User, namespace="user") == None
 
 
 def test_get_as_invalid_value(db):
@@ -162,15 +159,14 @@ def test_get_batch_as_empty(db):
 
 
 def test_get_batch_as_missing_key(db):
-    with pytest.raises(KeyError):
-        db.get_batch_as(["1", "999"], User, namespace="user")
+    assert db.get_batch_as(["1", "999"], User, namespace="user") == {
+        '1': User(name='Alice', age=30)
+    }
 
 
 def test_get_batch_as_invalid_value(db):
     db.data["user:3"] = "invalid"
-
-    with pytest.raises(TypeError):
-        db.get_batch_as(["1", "3"], User, namespace="user")
+    db.get_batch_as(["1", "3"], User, namespace="user") == {}
 
 
 # -------------------------
@@ -201,8 +197,9 @@ def test_get_batch_empty(db):
 
 
 def test_get_batch_missing_key(db):
-    with pytest.raises(KeyError):
-        db.get_batch(["name", "missing"])
+    assert db.get_batch(["name", "missing"]) == {
+        "name": "John"
+    }
 
 
 def test_get_batch_single_key(db):

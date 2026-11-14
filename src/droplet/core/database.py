@@ -553,7 +553,7 @@ class Droplet:
         now = time.time()
         if expiration < now:
             self.delete(key)
-            raise KeyError(f'{key} has expired {now - expiration} seconds ago.')
+            return 0
 
         return expiration - now
 
@@ -717,12 +717,9 @@ class Droplet:
 
         if self.__is_expired(key):
             self.delete(key)
-            raise KeyError(f'{key} not found')
+            return None
 
-        value = self.data.get(key, _MISSING)
-        if value == _MISSING:
-            raise KeyError(f'{key} not found')
-        return value
+        return self.data.get(key, None)
 
 
 
@@ -758,11 +755,11 @@ class Droplet:
             An instance of the given class populated with the stored value.
 
         Raises:
-            KeyError: If the key does not exist in the database.
             TypeError: If the stored value is not a dictionary or cannot be used
                 to construct the given class.
         """
-        return cls(**self.get(key, namespace))
+        value = self.get(key, namespace)
+        return None if value is None else cls(**value)
 
 
 
@@ -782,13 +779,15 @@ class Droplet:
             A dictionary mapping each key to an instance of the given data class.
 
         Raises:
-            KeyError: If any of the given keys do not exist in the database.
             TypeError: If a stored value cannot be used to construct the given class.
         """        
         items: dict[str, T] = {}
         for key in keys:
-            items[key] = cls(**self.get(key, namespace))
-
+            value = self.get(key, namespace)
+            if not isinstance(value, dict):
+                continue
+            
+            items[key] = cls(**value)
         return items
 
 
@@ -809,8 +808,11 @@ class Droplet:
         items: dict[str, SupportedType] = {}
         for key in keys:
             key = self.__get_key(key, namespace)
+            value = self.get(key)
+            if value is None:
+                continue
+
             items[key] = self.get(key)
-        
         return items
 
 

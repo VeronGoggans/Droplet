@@ -262,9 +262,7 @@ def test_delete_persistence(tmp_path):
     reopened.open()
 
     try:
-        with pytest.raises(KeyError):
-            reopened.get("name")
-
+        assert reopened.get("name") == None
         assert reopened.get("age") == 30
     finally:
         reopened.close()
@@ -285,17 +283,12 @@ def test_delete_batch_persistence(tmp_path):
 
     reopened = Droplet(tmp_path, mode='persistent')
     reopened.open()
-
-    try:
-        with pytest.raises(KeyError):
-            reopened.get("name")
-
-        with pytest.raises(KeyError):
-            reopened.get("age")
-
-        assert reopened.get("active") is True
-    finally:
-        reopened.close()
+    
+    assert reopened.get("name") == None
+    assert reopened.get("age") == None
+    assert reopened.get("active") is True
+    
+    reopened.close()
 
 
 def test_delete_then_reinsert_persistence(tmp_path):

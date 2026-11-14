@@ -205,7 +205,7 @@ def test_increment_with_namespace(db):
 
 
 def test_increment_missing_key(db):
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         db.increment("missing")
 
 
@@ -281,7 +281,7 @@ def test_decrement_with_namespace(db):
 
 
 def test_decrement_missing_key(db):
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         db.decrement("missing")
 
 
