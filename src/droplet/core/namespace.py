@@ -2,8 +2,8 @@ from pathlib import Path
 from dataclasses import asdict
 
 
-from droplet.types import SupportedType, T
-from droplet.exporter import export_to_json
+from droplet.core.types import SupportedType, T
+from droplet.core.exporter import export_to_json
 
 
 class Namespace:

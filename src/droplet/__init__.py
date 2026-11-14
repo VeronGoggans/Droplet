@@ -1,3 +1,3 @@
-from .database import Droplet
+from .core.database import Droplet
 
 __all__ = [Droplet]

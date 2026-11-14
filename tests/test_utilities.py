@@ -1,7 +1,7 @@
 
 import pytest
 
-from src.droplet.database import Droplet
+from src.droplet.core.database import Droplet
 
 
 @pytest.fixture

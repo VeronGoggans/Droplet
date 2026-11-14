@@ -1,7 +1,7 @@
 import json
 
 from droplet import Droplet
-from droplet.types import SupportedType
+from droplet.core.types import SupportedType
 from argparse import Namespace
 from typing import Union
 from pathlib import Path

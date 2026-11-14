@@ -1,7 +1,7 @@
 import struct
 from uuid import UUID
-from droplet.exceptions import DeserializationError
-from droplet.types import (
+from droplet.core.exceptions import DeserializationError
+from droplet.core.types import (
     SupportedType,
     STRING,
     INTEGER,

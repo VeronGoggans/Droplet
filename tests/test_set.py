@@ -3,7 +3,7 @@ import time
 import pytest
 
 from dataclasses import dataclass, asdict
-from src.droplet.database import Droplet
+from src.droplet.core.database import Droplet
 
 
 @dataclass

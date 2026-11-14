@@ -6,11 +6,11 @@ from pathlib import Path
 from typing import Union
 from dataclasses import asdict
 
-from droplet.exceptions import DeserializationError
-from droplet.namespace import Namespace
-from droplet.types import SupportedType, _MISSING, T, UUID, StorageMode
-from droplet.serializer import serialize, deserialize
-from droplet.exporter import export_to_json
+from droplet.core.exceptions import DeserializationError
+from droplet.core.namespace import Namespace
+from droplet.core.types import SupportedType, _MISSING, T, UUID, StorageMode
+from droplet.core.serializer import serialize, deserialize
+from droplet.core.exporter import export_to_json
 
 
 ADD = 1
